@@ -1,17 +1,27 @@
 
 model{
-  alpha ~ dnorm(0, 0.001)
-  
-  for (k in 1:nbeta){
-    beta[k] ~ dnorm(0, 0.001) 
-  }
-  
-  sigma.res ~ dunif(0, 100) 
-  tau.res <- 1/(sigma.res^2)
-  
-  # Likelihood
-  for (i in 1:length(y)) {
-    mu[i] <- alpha + beta%*%X[i,] 
-    y[i] ~ dnorm(mu[i], tau.res) 
-  }
-}
+    sigma.int ~ dunif(0, 100)
+    tau.int <- 1/(sigma.int^2)
+    
+    for (j in 1:nalpha) {
+    alpha[j] ~ dnorm(mu.alpha, tau.int) # Random by-subject deflections to the intercept
+    }
+    
+    mu.alpha ~ dnorm(0, 0.001) # The mean intercept
+    
+    for (k in 1:nbeta){
+    beta[k] ~ dnorm(0, 0.001) # Common slopes
+    }
+    
+    sigma.res ~ dunif(0, 100) # Residual standard deviation
+    tau.res <- 1/(sigma.res^2)
+    
+    # Likelihood
+    for (i in 1:length(y)) {
+    mu[i] <- alpha[genotype[i]] + beta%*%X[i,] 
+    y[i] ~ dnorm(mu[i], tau.res) # The actual (random) responses
+    
+
+    }
+    
+    }
