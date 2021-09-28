@@ -4,30 +4,19 @@
 # main_code folder
 
 ## Load libraries ####
-library(tidyverse); library(ggmcmc); library(rjags); library(lme4)
+library(tidyverse); library(ggmcmc); library(rjags); library(lme4); library(here)
 
 ## Read in data ####
+all_traits <- read_csv(here("data", "CompiledTraitData.csv"))
 
-# Pot-level trait data for (generalized) linear mixed models
-pot_traits <- read_csv("data/BelowgroundEvolution_PotLevel.csv")
-# Initial condition data of which propagule were in each pot
-ic_stems <- read_csv("data/InitialPropagules.csv")
-
-## Data formatting ####
-# Set appropriate factors
-pot_traits %>% 
+# Set all factors
+all_traits %>% 
   mutate(pot = factor(pot),
-         frame = factor(frame),
-         diversity = factor(diversity),
-         age = factor(age),
-         provenance = factor(provenance),
-         genotype = factor(genotype)) -> pot_traits
-# Subset data into all monoculture data and all polyculture data
-pot_traits %>% 
-  filter(diversity == "mono") -> mono_traits
-pot_traits %>% 
-  filter(diversity == "poly") -> poly_traits
+         frame = factor(frame)) -> all_traits
 
+# Subset out monocultures for monoculture trait analysis
+mono_traits <- all_traits %>% 
+  filter(diversity == "mono")
 
 ## Source JAGS functions to fit (generalized) linear mixed models ####
 source("main_code/jags_fxns.R")
@@ -74,7 +63,7 @@ saveRDS(bgb_out, "outputs/bgb_monomodel.rds")
 # Subset data to just Corn Island and Sellman Creek because those provenances
 # have multiple reps within each age cohort (only drops 6 reps)
 mono_traits %>% 
-  filter(provenance %in% c("corn", "sellman")) -> cs_traits
+  filter(location %in% c("corn", "sellman")) -> cs_traits
 
 # Previous models fits showed non-significant age by provenance interactions for
 # all trait models. So here we fit all models with additive effects of age and
@@ -82,7 +71,7 @@ mono_traits %>%
 
 # Create new model template
 model_template_cs <- lmer(agb ~ ln_depth + ic_weight + frame +
-                            provenance + age + (1|genotype), data = cs_traits)
+                            location + age + (1|genotype), data = cs_traits)
 
 ## aboveground biomass
 agb_cs_out <- run_models(cs_traits, "agb", model_template_cs, diag_plot = F)
@@ -255,24 +244,19 @@ mean((heights_sellman - heights_corn)/heights_corn) # 0.02920073
 quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01567764  0.07571127   
 
 ## Monoculture vs polyculture analysis ####
-## Monoculture vs Polyculture ####
 additive_predict <- function(monoculture_ggs){
-  # Set up information about polyculture pots (initial weights of propagules,
-  # frame and ln_depth). Not actually fitting a model here, just getting
-  # information from the model matrix
-  mod_poly <- lm(agb ~ ic_weight + ln_depth + frame, data = poly_traits) 
+  # Set up information about polyculture pots (ln_depth and frame). Not actually
+  # fitting a model here, just getting information from the model matrix
+  mod_poly <- lm(agb ~ ln_depth + frame, data = poly_traits) 
   
   # Get model matrices from linear models (remove intercept)
   M_poly <- as.matrix(model.matrix(mod_poly)[ , -1])
   
   # Scale continuous covariates (using means and sd from in monoculture models)
   M_poly_sc <- M_poly
-  ic_weight_Mono_mean <- mean(mono_traits$ic_weight)
-  ic_weight_Mono_sd <- sd(mono_traits$ic_weight)
   ln_depth_Mono_mean <- mean(mono_traits$ln_depth)
-  ln_depth_Mono_sd <- sd(mono_traits$ln_depth)
-  M_poly_sc[,"ic_weight"] <- (M_poly[,"ic_weight"] - ic_weight_Mono_mean)/ic_weight_Mono_sd
-  M_poly_sc[,"ln_depth"] <- (M_poly[,"ln_depth"] - ln_depth_Mono_mean)/ln_depth_Mono_sd
+  ic_weight_Mono_mean <- mean(mono_traits$ic_weight)
+  M_poly_sc[,"ln_depth"] <- (M_poly[,"ln_depth"] - ln_depth_Mono_mean)
   
   # Set up storage to hold biomass predictions
   MonoPredict <- matrix(0, nrow = 6666, ncol = 48)
@@ -292,7 +276,7 @@ additive_predict <- function(monoculture_ggs){
       mutate(weight_4 = Weight * 4) -> pot_mono
     
     # Pull covariate information
-    M_poly_sc[i,2:5] -> pot_poly
+    M_poly_sc[i,] -> pot_poly
     
     # Make data easy to grab from jags_mono object
     monoculture_ggs %>%
@@ -319,11 +303,11 @@ additive_predict <- function(monoculture_ggs){
       pull(value) -> beta_frame1
     # Get second frame regression coefficient
     monoculture_ggs %>% 
-      filter(Parameter == "beta[2]") %>% 
+      filter(Parameter == "beta[4]") %>% 
       pull(value) -> beta_frame2
     # Get last frame regression coefficient
     monoculture_ggs %>% 
-      filter(Parameter == "beta[3]") %>% 
+      filter(Parameter == "beta[5]") %>% 
       pull(value) -> beta_frame3
     
     
@@ -332,7 +316,7 @@ additive_predict <- function(monoculture_ggs){
     for (j in 1:4){
       genotype_name <- pull(pot_mono[j, "Id"])
       predict[,j] <- alphas_df[, genotype_name] + 
-        beta_icweight * pull(pot_mono[j, "Weight"]) + beta_lndepth * pot_poly[1] +
+        beta_icweight * (pull(pot_mono[j, "weight_4"]) - ic_weight_Mono_mean) + beta_lndepth * pot_poly[1] +
         beta_frame1 * pot_poly[2] + beta_frame2 * pot_poly[3] + beta_frame3 * pot_poly[4]
     }
     
@@ -358,20 +342,21 @@ saveRDS(rs_additive, "chp1/results/monopoly_rs_add.rds")
 saveRDS(density_additive, "chp1/results/monopoly_density_add.rds")
 saveRDS(beta_additive, "chp1/results/monopoly_beta_add.rds")
 
+## Differences by age cohort
 mean_difference_bypot <- function(trait, additive_samples){
   # Predicted values for each polyculture pot (row = iterations, col = pots)
-  observed <- poly_all[,trait]
+  observed <- pull(poly_traits[,trait])
   
   # Create matrix to hold differences between observed and predicted for each pot
   # at each iteration
-  difference <- matrix(0, nrow = 4000, ncol = 48)
+  difference <- matrix(0, nrow = 6666, ncol = 48)
   
   if(trait == "density"){
-    for (i in 1:4000){
+    for (i in 1:6666){
       difference[i,] <- log(observed) - additive_samples$MonoPredict[i,]
     }
   }else{
-    for (i in 1:4000){
+    for (i in 1:6666){
       difference[i,] <- observed - additive_samples$MonoPredict[i,]
     }
   }
@@ -383,16 +368,16 @@ mean_difference_bypot <- function(trait, additive_samples){
 }
 
 # Check for effects of age on difference for each trait
-diffs_biomass <- mean_difference_bypot("total_biomass", biomass_additive)
+diffs_biomass <- mean_difference_bypot("agb", biomass_additive)
 diffs_density <- mean_difference_bypot("density", density_additive)
 diffs_height<- mean_difference_bypot("mean_tot_height", height_additive)
 diffs_width <- mean_difference_bypot("mean_mid_width", width_additive)
-diffs_bgb <- mean_difference_bypot("total_bgb", bgb_additive)
+diffs_bgb <- mean_difference_bypot("bgb", bgb_additive)
 diffs_rs <- mean_difference_bypot("rs", rs_additive)
 diffs_beta <- mean_difference_bypot("beta", beta_additive)
 
 
-tibble(poly_all) %>%
+tibble(poly_traits) %>%
   arrange(pot) %>%
   mutate(`aboveground biomass (g)` = diffs_biomass$x,
          `stem density` = diffs_density$x,
@@ -407,15 +392,19 @@ tibble(poly_all) %>%
   dplyr::select(age, `aboveground biomass (g)`, `stem density`, `mean stem height (cm)`, `mean stem width (mm)`,
                 `belowground biomass (g)`, `root:shoot ratio`, `root distribution parameter`) -> diffs_by_age
 
+diffs_by_age %>% 
+  ggplot(aes(x = age, y = `stem density`)) +
+  geom_boxplot()
+
 saveRDS(diffs_by_age, "chp1/results/monopoly_diffsbyage.rds")
 
 # WHOAAA -- looks like bg biomass is going in the direction we would predict!!
 # Competition is not as strong in modern vs ancestral 
 
-abg_mod <- lm(`ag biomass` ~ age, data = diffs_by_age)
+abg_mod <- lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)
 anova(abg_mod)
 
-bgb_mod <- lm(`bg biomass` ~ age, data = diffs_by_age)
+bgb_mod <- lm(`belowground biomass (g)` ~ age, data = diffs_by_age)
 anova(bgb_mod) # .
 
 density_mod <- lm(density ~ age, data = diffs_by_age)
@@ -424,13 +413,13 @@ anova(density_mod)
 beta_mod <- lm(`root parameter` ~ age, data = diffs_by_age)
 anova(beta_mod)
 
-rs_mod <- lm(`root:shoot` ~ age, data = diffs_by_age)
+rs_mod <- lm(`root:shoot ratio` ~ age, data = diffs_by_age)
 anova(rs_mod) # *
 
-height_mod <- lm(`stem height` ~ age, data = diffs_by_age)
+height_mod <- lm(`mean stem height (cm)` ~ age, data = diffs_by_age)
 anova(height_mod)
 
-width_mod <- lm(`stem width` ~ age, data = diffs_by_age)
+width_mod <- lm(`mean stem width (mm)` ~ age, data = diffs_by_age)
 anova(width_mod)
 
 # Pull out bgb and root:shoot to show systematic differences
