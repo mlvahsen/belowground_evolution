@@ -71,8 +71,8 @@ get_samples <- function(model, data, trait){
   
   # Scale (and center) continuous covariates
   M_all_sc <- M_all
-  M_all_sc[,1] <- scale(M_all[,1], scale = F)
-  M_all_sc[,2] <- scale(M_all[,2], scale = F)
+  M_all_sc[,1] <- scale(M_all[,1], scale = T)
+  M_all_sc[,2] <- scale(M_all[,2], scale = T)
   
   # Set up data structure
   nbeta <- ncol(M_all_sc)
@@ -123,8 +123,8 @@ get_samples_pois <- function(model, data){# Get model matrices from linear model
   
   # Scale continuous covariates
   M_all_sc <- M_all
-  M_all_sc[,1] <- scale(M_all[,1], scale = F)
-  M_all_sc[,2] <- scale(M_all[,2], scale = F)
+  M_all_sc[,1] <- scale(M_all[,1], scale = T)
+  M_all_sc[,2] <- scale(M_all[,2], scale = T)
   
   # Set up data structure
   nbeta <- ncol(M_all_sc)

@@ -135,13 +135,13 @@ predicted_rs %>%
   rowMeans() -> rs_sellman
 
 # Calculate absolute difference in means
-mean(rs_corn - rs_sellman) # 0.1023549
+mean(rs_corn - rs_sellman) # 0.1161002
 # Calculate 95% credible interval of difference in means
-quantile(rs_corn - rs_sellman, c(0.025, 0.975)) # 0.01852034 0.18912246
+quantile(rs_corn - rs_sellman, c(0.025, 0.975)) # 0.01702895 0.21188719
 # Calculate mean percent increase from Sellman to Corn
-mean(rs_corn / rs_sellman - 1) # 0.1458952
+mean(rs_corn / rs_sellman - 1) # 0.1776576
 # Calculate 95% credible interval percent increase from Sellman to Corn
-quantile(rs_corn/rs_sellman - 1, c(0.025, 0.975)) # 0.02368095 0.28810277 
+quantile(rs_corn/rs_sellman - 1, c(0.025, 0.975)) # 0.02320939 0.35092684 
 
 # Calculate average predicted root-to-shoot for ancestral cohort
 predicted_rs %>% 
@@ -154,9 +154,9 @@ predicted_rs %>%
   rowMeans() -> rs_modern
 
 # Calculate mean percent decrease from ancestral to modern
-mean((rs_ancestral - rs_modern)/rs_ancestral) # 0.07282689
+mean((rs_ancestral - rs_modern)/rs_ancestral) # 0.08648667
 # Calculate 95% quantile for percent decrease from ancestral to modern
-quantile((rs_ancestral - rs_modern)/rs_ancestral, c(0.025, 0.975)) # -0.02792931  0.17022620 
+quantile((rs_ancestral - rs_modern)/rs_ancestral, c(0.025, 0.975)) # -0.03826322  0.19962476  
 
 ## Calculate effect sizes for text: stem width ####
 
@@ -196,9 +196,9 @@ predicted_widths %>%
   rowMeans() -> widths_modern
 
 # Calculate mean percent decrease from ancestral to modern
-mean((widths_ancestral - widths_modern)/widths_ancestral) # 0.05637774
+mean((widths_ancestral - widths_modern)/widths_ancestral) # 0.05896701
 # Calculate 95% credible interval of percent decrease from ancestral to modern
-quantile((widths_ancestral - widths_modern)/widths_ancestral, c(0.025, 0.975)) # -0.03070937  0.14518776   
+quantile((widths_ancestral - widths_modern)/widths_ancestral, c(0.025, 0.975)) # -0.03401524  0.14842040   
 
 ## Calculate effect sizes for text: stem height ####
 
@@ -238,11 +238,13 @@ predicted_heights %>%
   rowMeans() -> heights_sellman
 
 # Calculate mean percent increase from Corn to Sellman
-mean((heights_sellman - heights_corn)/heights_corn) # 0.02920073
+mean((heights_sellman - heights_corn)/heights_corn) # 0.0297219
 # Calculate 95% credible interval percent increase from Corn to Sellman
-quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01567764  0.07571127   
+quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01528762  0.07602574   
 
 ## Monoculture vs polyculture analysis ####
+poly_traits <- all_traits %>% filter(diversity == "poly")
+
 additive_predict <- function(monoculture_ggs){
   # Set up information about polyculture pots (ln_depth and frame). Not actually
   # fitting a model here, just getting information from the model matrix
