@@ -43,20 +43,19 @@ height_out <- run_models(mono_traits, "mean_tot_height", model_template_mono, di
 ## stem width
 width_out <- run_models(mono_traits, "mean_mid_width", model_template_mono, diag_plot = F)
 ## belowground biomass
-bgb_out <- run_models(mono_traits, "bgb", model_template_mono, diag_plot = F)
 ## root-to-shoot ratio
 rs_out <- run_models(mono_traits, "rs", model_template_mono, diag_plot = F)
 ## beta (belowground biomass distribution parameter)
 beta_out <- run_models(mono_traits, "beta", model_template_mono, diag_plot = F)
 
 # Save as R data file objects to use later for plotting and subsequent analyses
-saveRDS(agb_out, "outputs/agb_monomodel.rds")
-saveRDS(rs_out, "outputs/rs_monomodel.rds")
-saveRDS(beta_out, "outputs/beta_monomodel.rds")
-saveRDS(width_out, "outputs/width_monomodel.rds")
-saveRDS(height_out, "outputs/height_monomodel.rds")
-saveRDS(rs_out, "outputs/rs_monomodel.rds")
-saveRDS(bgb_out, "outputs/bgb_monomodel.rds")
+# saveRDS(agb_out, "outputs/agb_monomodel.rds")
+# saveRDS(rs_out, "outputs/rs_monomodel.rds")
+# saveRDS(beta_out, "outputs/beta_monomodel.rds")
+# saveRDS(width_out, "outputs/width_monomodel.rds")
+# saveRDS(height_out, "outputs/height_monomodel.rds")
+# saveRDS(rs_out, "outputs/rs_monomodel.rds")
+# saveRDS(bgb_out, "outputs/bgb_monomodel.rds")
 
 ## Fit all trait models for age + provenance additive effects ####
 
@@ -91,13 +90,13 @@ rs_cs_out <- run_models(cs_traits, "rs", model_template_cs, diag_plot = F)
 beta_cs_out <- run_models(cs_traits, "beta", model_template_cs, diag_plot = F)
 
 # Save as R data file objects to use later for plotting and subsequent analyses
-saveRDS(agb_cs_out, "outputs/agb_csmodel.rds")
-saveRDS(rs_cs_out, "outputs/rs_csmodel.rds")
-saveRDS(beta_cs_out, "outputs/beta_csmodel.rds")
-saveRDS(width_cs_out, "outputs/width_csmodel.rds")
-saveRDS(height_cs_out, "outputs/height_csmodel.rds")
-saveRDS(rs_cs_out, "outputs/rs_csmodel.rds")
-saveRDS(bgb_cs_out, "outputs/bgb_csmodel.rds")
+# saveRDS(agb_cs_out, "outputs/agb_csmodel.rds")
+# saveRDS(rs_cs_out, "outputs/rs_csmodel.rds")
+# saveRDS(beta_cs_out, "outputs/beta_csmodel.rds")
+# saveRDS(width_cs_out, "outputs/width_csmodel.rds")
+# saveRDS(height_cs_out, "outputs/height_csmodel.rds")
+# saveRDS(rs_cs_out, "outputs/rs_csmodel.rds")
+# saveRDS(bgb_cs_out, "outputs/bgb_csmodel.rds")
 ## Calculate effect sizes for text: root-to-shoot ####
 
 # Collect MCMC samples for all regression coefficients from root-to-shoot model
