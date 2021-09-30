@@ -251,6 +251,8 @@ quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01
 # Create a dataset with just polycultures
 poly_traits <- all_traits %>% filter(diversity == "poly")
 
+# Create function to calculate predicted trait value given additive interactions
+# between genotypes
 additive_predict <- function(monoculture_ggs){
   # Set up information about polyculture pots (ln_depth and frame). Not actually
   # fitting a model here, just getting information from the model matrix
@@ -336,6 +338,7 @@ additive_predict <- function(monoculture_ggs){
   return(list(MonoPredict = MonoPredict))
 }
 
+# Run additive function for each trait
 biomass_additive <- additive_predict(ggs(agb_out))
 bgb_additive <- additive_predict(ggs(bgb_out))
 height_additive <- additive_predict(ggs(height_out))
@@ -344,15 +347,57 @@ rs_additive <- additive_predict(ggs(rs_out))
 density_additive <- additive_predict(ggs(density_out))
 beta_additive <- additive_predict(ggs(beta_out))
 
-saveRDS(biomass_additive, "chp1/results/monopoly_biomass_add.rds")
-saveRDS(bgb_additive, "chp1/results/monopoly_bgb_add.rds")
-saveRDS(height_additive, "chp1/results/monopoly_height_add.rds")
-saveRDS(width_additive, "chp1/results/monopoly_width_add.rds")
-saveRDS(rs_additive, "chp1/results/monopoly_rs_add.rds")
-saveRDS(density_additive, "chp1/results/monopoly_density_add.rds")
-saveRDS(beta_additive, "chp1/results/monopoly_beta_add.rds")
+# Save additive output for later plots
+# saveRDS(biomass_additive, "chp1/results/monopoly_biomass_add.rds")
+# saveRDS(bgb_additive, "chp1/results/monopoly_bgb_add.rds")
+# saveRDS(height_additive, "chp1/results/monopoly_height_add.rds")
+# saveRDS(width_additive, "chp1/results/monopoly_width_add.rds")
+# saveRDS(rs_additive, "chp1/results/monopoly_rs_add.rds")
+# saveRDS(density_additive, "chp1/results/monopoly_density_add.rds")
+# saveRDS(beta_additive, "chp1/results/monopoly_beta_add.rds")
 
-## Differences by age cohort
+## Calculate differences between observed trait values and additive predictions
+## for each pot (j) at each iteration (i)
+
+# Create storage to hold differences between predicted and observed traits. This
+# should be the same dimensions as the additive predictions matrix
+pred_obs_diff <- matrix(NA, nrow = nrow(biomass_additive$MonoPredict),
+                        ncol = ncol(biomass_additive$MonoPredict))
+
+# Loop through polyculture pots (n = 48) to get differences at each iteration
+average_difference <- function(trait, additive_samples){
+  for (j in 1:48){
+    pot_trait_temp <- poly_traits %>%
+      filter(pot == j) %>%
+      select(trait) %>% as.numeric()
+    if(trait == "beta" & is.na(pot_trait_temp)){
+      pot_trait_temp <- 10000
+    }
+    # Observed - Predicted (positive values mean that what we observed is greater
+    # than the additive expectation, so POSITIVE = FACTILITATION; and negative
+    # values mean that what we observed was less than the additive expectation, so
+    # NEGATIVE = COMPETITION)
+    if(trait == "density"){
+      pred_obs_diff[,j] <- log(pot_trait_temp) - additive_samples$MonoPredict[,j]
+    }else{
+      pred_obs_diff[,j] <- pot_trait_temp - additive_samples$MonoPredict[,j]
+    }
+     
+  }
+  # Then take a mean across all 48 pots for each iteration to get the mean
+  # effect (for beta make sure to skip pot 39)
+  if(trait == "beta"){
+    average_difference <- rowMeans(pred_obs_diff[,c(1:38,40:48)])
+  }else{
+    average_difference <- rowMeans(pred_obs_diff)
+  }
+  return(average_difference)
+}
+
+hist(average_difference("beta", beta_additive))
+
+## Differences by age cohort: Calculate differences at each iteration for each
+## pot
 mean_difference_bypot <- function(trait, additive_samples){
   # Predicted values for each polyculture pot (row = iterations, col = pots)
   observed <- pull(poly_traits[,trait])
@@ -372,7 +417,7 @@ mean_difference_bypot <- function(trait, additive_samples){
   }
   
   # Get average difference across pots for each iteration
-  avg_difference <- data.frame(x =colMeans(difference/mean(observed, na.rm = T), na.rm = T))
+  avg_difference <- data.frame(x =colMeans(difference), na.rm = T))
   
   return(avg_difference)
 }
@@ -403,7 +448,7 @@ tibble(poly_traits) %>%
                 `belowground biomass (g)`, `root:shoot ratio`, `root distribution parameter`) -> diffs_by_age
 
 diffs_by_age %>% 
-  ggplot(aes(x = age, y = `stem density`)) +
+  ggplot(aes(x = age, y = `root:shoot ratio`)) +
   geom_boxplot()
 
 saveRDS(diffs_by_age, "chp1/results/monopoly_diffsbyage.rds")
