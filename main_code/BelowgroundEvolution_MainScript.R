@@ -7,6 +7,9 @@
 library(tidyverse); library(ggmcmc); library(rjags); library(lme4); library(here)
 
 ## Read in data ####
+
+# Source in initial conditions (genotypes and wet weights)
+source(here("supp_code", "GCREW_InitialConditions.R"))
 all_traits <- read_csv(here("data", "CompiledTraitData.csv"))
 
 # Set all factors
@@ -43,6 +46,7 @@ height_out <- run_models(mono_traits, "mean_tot_height", model_template_mono, di
 ## stem width
 width_out <- run_models(mono_traits, "mean_mid_width", model_template_mono, diag_plot = F)
 ## belowground biomass
+bgb_out <- run_models(mono_traits, "bgb", model_template_mono, diag_plot = F)
 ## root-to-shoot ratio
 rs_out <- run_models(mono_traits, "rs", model_template_mono, diag_plot = F)
 ## beta (belowground biomass distribution parameter)
@@ -243,6 +247,8 @@ mean((heights_sellman - heights_corn)/heights_corn) # 0.0297219
 quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01528762  0.07602574   
 
 ## Monoculture vs polyculture analysis ####
+
+# Create a dataset with just polycultures
 poly_traits <- all_traits %>% filter(diversity == "poly")
 
 additive_predict <- function(monoculture_ggs){
@@ -251,13 +257,13 @@ additive_predict <- function(monoculture_ggs){
   mod_poly <- lm(agb ~ ln_depth + frame, data = poly_traits) 
   
   # Get model matrices from linear models (remove intercept)
-  M_poly <- as.matrix(model.matrix(mod_poly)[ , -1])
+  M_poly <- as.matrix(model.matrix(mod_poly)[,-1])
   
-  # Scale continuous covariates (using means and sd from in monoculture models)
+  # Scale ln_depth (using means and sd from in monoculture models)
   M_poly_sc <- M_poly
   ln_depth_Mono_mean <- mean(mono_traits$ln_depth)
-  ic_weight_Mono_mean <- mean(mono_traits$ic_weight)
-  M_poly_sc[,"ln_depth"] <- (M_poly[,"ln_depth"] - ln_depth_Mono_mean)
+  ln_depth_Mono_sd <- sd(mono_traits$ln_depth)
+  M_poly_sc[,"ln_depth"] <- (M_poly[,"ln_depth"] - ln_depth_Mono_mean)/ln_depth_Mono_sd
   
   # Set up storage to hold biomass predictions
   MonoPredict <- matrix(0, nrow = 6666, ncol = 48)
@@ -272,23 +278,25 @@ additive_predict <- function(monoculture_ggs){
     # want to be predicting with initial weights outside of ranges that we fitted
     # the regression in.
     
-    ic_stems %>% 
+    ic_data %>% 
       filter(pot == i) %>% 
-      mutate(weight_4 = Weight * 4) -> pot_mono
+      mutate(weight_4 = weight * 4) -> pot_mono
     
     # Pull covariate information
     M_poly_sc[i,] -> pot_poly
     
-    # Make data easy to grab from jags_mono object
+    # Pull out all random intercept (genotype) random intercepts
     monoculture_ggs %>%
       filter(substr(Parameter, 1, 5) == "alpha") %>% 
       spread(key = Parameter, value = value) %>% 
       dplyr::select(contains("alpha")) -> alphas_ggs
     
     alphas_df <- as.data.frame(alphas_ggs)
-    colnames(alphas_df) <- levels(mono_traits$genotype)
+    # This puts genotypes in alphabetical order which matches up with how they
+    # were fit in monoculture models. This checks out with raw data too
+    colnames(alphas_df) <- levels(factor(mono_traits$genotype))
     
-    # Get regression coefficient for ln_depth
+    # Get regression coefficient for ln_depth from monoculture model
     monoculture_ggs %>% 
       filter(Parameter == "beta[1]") %>% 
       pull(value) -> beta_lndepth
@@ -311,13 +319,14 @@ additive_predict <- function(monoculture_ggs){
       filter(Parameter == "beta[5]") %>% 
       pull(value) -> beta_frame3
     
-    
     # Create regression with frame, ic_weight, and depth info from the
     # polyculture and use regression coefficients from the monoculture model
     for (j in 1:4){
-      genotype_name <- pull(pot_mono[j, "Id"])
+      genotype_name <- pot_mono[j, "genotype"]
+      # Scale initial condition weight using scaling parameters from monoculture models
+      ic_weight_scaled <- (pot_mono[j, "weight_4"] - mean(mono_traits$ic_weight)) / sd(mono_traits$ic_weight)
       predict[,j] <- alphas_df[, genotype_name] + 
-        beta_icweight * (pull(pot_mono[j, "weight_4"]) - ic_weight_Mono_mean) + beta_lndepth * pot_poly[1] +
+        beta_icweight * ic_weight_scaled + beta_lndepth * pot_poly[1] +
         beta_frame1 * pot_poly[2] + beta_frame2 * pot_poly[3] + beta_frame3 * pot_poly[4]
     }
     
