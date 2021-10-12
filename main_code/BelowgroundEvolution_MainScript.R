@@ -340,7 +340,7 @@ additive_predict <- function(monoculture_ggs){
 }
 
 # Run additive function for each trait
-biomass_additive <- additive_predict(ggs(agb_out))
+agb_additive <- additive_predict(ggs(agb_out))
 bgb_additive <- additive_predict(ggs(bgb_out))
 height_additive <- additive_predict(ggs(height_out))
 width_additive <- additive_predict(ggs(width_out))
@@ -349,13 +349,13 @@ density_additive <- additive_predict(ggs(density_out))
 beta_additive <- additive_predict(ggs(beta_out))
 
 # Save additive output for later plots
-# saveRDS(biomass_additive, "chp1/results/monopoly_biomass_add.rds")
-# saveRDS(bgb_additive, "chp1/results/monopoly_bgb_add.rds")
-# saveRDS(height_additive, "chp1/results/monopoly_height_add.rds")
-# saveRDS(width_additive, "chp1/results/monopoly_width_add.rds")
-# saveRDS(rs_additive, "chp1/results/monopoly_rs_add.rds")
-# saveRDS(density_additive, "chp1/results/monopoly_density_add.rds")
-# saveRDS(beta_additive, "chp1/results/monopoly_beta_add.rds")
+saveRDS(agb_additive, here("outputs/monoculture_polyculture/","monopoly_agb_add.rds"))
+saveRDS(bgb_additive, here("outputs/monoculture_polyculture/","monopoly_bgb_add.rds"))
+saveRDS(height_additive, here("outputs/monoculture_polyculture/","monopoly_height_add.rds"))
+saveRDS(width_additive, here("outputs/monoculture_polyculture/","monopoly_width_add.rds"))
+saveRDS(rs_additive, here("outputs/monoculture_polyculture/","monopoly_rs_add.rds"))
+saveRDS(density_additive, here("outputs/monoculture_polyculture/","monopoly_density_add.rds"))
+saveRDS(beta_additive, here("outputs/monoculture_polyculture/","monopoly_beta_add.rds"))
 
 ## Calculate differences between observed trait values and additive predictions
 ## for each pot (j) at each iteration (i)
@@ -446,6 +446,9 @@ tibble(poly_traits) %>%
                          T ~ "mix")) %>%
   dplyr::select(age, `aboveground biomass (g)`, `stem density`, `mean stem height (cm)`, `mean stem width (mm)`,
                 `belowground biomass (g)`, `root:shoot ratio`, `root distribution parameter`) -> diffs_by_age
+
+# Save table for later
+saveRDS(diffs_by_age, here("outputs/monoculture_polyculture/", "diffs_by_age.rds"))
 
 # Check to see if there are significant differences by age group
 abg_mod <- lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)
