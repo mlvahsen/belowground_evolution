@@ -53,13 +53,13 @@ rs_out <- run_models(mono_traits, "rs", model_template_mono, diag_plot = F)
 beta_out <- run_models(mono_traits, "beta", model_template_mono, diag_plot = F)
 
 # Save as R data file objects to use later for plotting and subsequent analyses
-# saveRDS(agb_out, "outputs/agb_monomodel.rds")
-# saveRDS(rs_out, "outputs/rs_monomodel.rds")
-# saveRDS(beta_out, "outputs/beta_monomodel.rds")
-# saveRDS(width_out, "outputs/width_monomodel.rds")
-# saveRDS(height_out, "outputs/height_monomodel.rds")
-# saveRDS(rs_out, "outputs/rs_monomodel.rds")
-# saveRDS(bgb_out, "outputs/bgb_monomodel.rds")
+saveRDS(agb_out, here("outputs/monoculture_models", "agb_monomodel.rds"))
+saveRDS(rs_out, here("outputs/monoculture_models", "rs_monomodel.rds"))
+saveRDS(bgb_out, here("outputs/monoculture_models", "bgb_monomodel.rds"))
+saveRDS(width_out, here("outputs/monoculture_models", "width_monomodel.rds"))
+saveRDS(height_out, here("outputs/monoculture_models", "height_monomodel.rds"))
+saveRDS(density_out, here("outputs/monoculture_models", "density_monomodel.rds"))
+saveRDS(beta_out, here("outputs/monoculture_models", "beta_monomodel.rds"))
 
 ## Fit all trait models for age + provenance additive effects ####
 
@@ -94,13 +94,14 @@ rs_cs_out <- run_models(cs_traits, "rs", model_template_cs, diag_plot = F)
 beta_cs_out <- run_models(cs_traits, "beta", model_template_cs, diag_plot = F)
 
 # Save as R data file objects to use later for plotting and subsequent analyses
-# saveRDS(agb_cs_out, "outputs/agb_csmodel.rds")
-# saveRDS(rs_cs_out, "outputs/rs_csmodel.rds")
-# saveRDS(beta_cs_out, "outputs/beta_csmodel.rds")
-# saveRDS(width_cs_out, "outputs/width_csmodel.rds")
-# saveRDS(height_cs_out, "outputs/height_csmodel.rds")
-# saveRDS(rs_cs_out, "outputs/rs_csmodel.rds")
-# saveRDS(bgb_cs_out, "outputs/bgb_csmodel.rds")
+saveRDS(agb_cs_out, here("outputs/corn_sellman_models/", "agb_csmodel.rds"))
+saveRDS(rs_cs_out, here("outputs/corn_sellman_models/", "rs_csmodel.rds"))
+saveRDS(beta_cs_out, here("outputs/corn_sellman_models/", "beta_csmodel.rds"))
+saveRDS(width_cs_out, here("outputs/corn_sellman_models/", "width_csmodel.rds"))
+saveRDS(height_cs_out, here("outputs/corn_sellman_models/", "height_csmodel.rds"))
+saveRDS(bgb_cs_out, here("outputs/corn_sellman_models/", "bgb_csmodel.rds"))
+saveRDS(density_cs_out, here("outputs/corn_sellman_models/", "density_csmodel.rds"))
+
 ## Calculate effect sizes for text: root-to-shoot ####
 
 # Collect MCMC samples for all regression coefficients from root-to-shoot model
@@ -364,7 +365,8 @@ beta_additive <- additive_predict(ggs(beta_out))
 pred_obs_diff <- matrix(NA, nrow = nrow(biomass_additive$MonoPredict),
                         ncol = ncol(biomass_additive$MonoPredict))
 
-# Loop through polyculture pots (n = 48) to get differences at each iteration
+# Loop through polyculture pots (n = 48) to get differences at each iteration.
+# This is for figure 2a.
 average_difference <- function(trait, additive_samples){
   for (j in 1:48){
     pot_trait_temp <- poly_traits %>%
@@ -394,10 +396,8 @@ average_difference <- function(trait, additive_samples){
   return(average_difference)
 }
 
-hist(average_difference("beta", beta_additive))
-
 ## Differences by age cohort: Calculate differences at each iteration for each
-## pot
+## pot. This is for figure 2b and supplemental figs.
 mean_difference_bypot <- function(trait, additive_samples){
   # Predicted values for each polyculture pot (row = iterations, col = pots)
   observed <- pull(poly_traits[,trait])
@@ -417,12 +417,12 @@ mean_difference_bypot <- function(trait, additive_samples){
   }
   
   # Get average difference across pots for each iteration
-  avg_difference <- data.frame(x =colMeans(difference), na.rm = T))
+  avg_difference <- data.frame(x =colMeans(difference, na.rm = T))
   
   return(avg_difference)
 }
 
-# Check for effects of age on difference for each trait
+# Calculate average difference for each pot for each trait
 diffs_biomass <- mean_difference_bypot("agb", biomass_additive)
 diffs_density <- mean_difference_bypot("density", density_additive)
 diffs_height<- mean_difference_bypot("mean_tot_height", height_additive)
@@ -431,7 +431,7 @@ diffs_bgb <- mean_difference_bypot("bgb", bgb_additive)
 diffs_rs <- mean_difference_bypot("rs", rs_additive)
 diffs_beta <- mean_difference_bypot("beta", beta_additive)
 
-
+# Create a data frame with all average differences and age cohort information
 tibble(poly_traits) %>%
   arrange(pot) %>%
   mutate(`aboveground biomass (g)` = diffs_biomass$x,
@@ -447,36 +447,25 @@ tibble(poly_traits) %>%
   dplyr::select(age, `aboveground biomass (g)`, `stem density`, `mean stem height (cm)`, `mean stem width (mm)`,
                 `belowground biomass (g)`, `root:shoot ratio`, `root distribution parameter`) -> diffs_by_age
 
-diffs_by_age %>% 
-  ggplot(aes(x = age, y = `root:shoot ratio`)) +
-  geom_boxplot()
-
-saveRDS(diffs_by_age, "chp1/results/monopoly_diffsbyage.rds")
-
-# WHOAAA -- looks like bg biomass is going in the direction we would predict!!
-# Competition is not as strong in modern vs ancestral 
-
+# Check to see if there are significant differences by age group
 abg_mod <- lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)
-anova(abg_mod)
+anova(abg_mod) # ns
 
 bgb_mod <- lm(`belowground biomass (g)` ~ age, data = diffs_by_age)
-anova(bgb_mod) # .
+anova(bgb_mod) # ns
 
-density_mod <- lm(density ~ age, data = diffs_by_age)
-anova(density_mod)
+density_mod <- lm(`stem density` ~ age, data = diffs_by_age)
+anova(density_mod) # ns
 
-beta_mod <- lm(`root parameter` ~ age, data = diffs_by_age)
-anova(beta_mod)
+beta_mod <- lm(`root distribution parameter` ~ age, data = diffs_by_age)
+anova(beta_mod) # .
+emmeans::emmeans(beta_mod, ~ age) # mix has lower beta than would be expected based on additive
 
 rs_mod <- lm(`root:shoot ratio` ~ age, data = diffs_by_age)
-anova(rs_mod) # *
+anova(rs_mod) # ns
 
 height_mod <- lm(`mean stem height (cm)` ~ age, data = diffs_by_age)
-anova(height_mod)
+anova(height_mod) # ns
 
 width_mod <- lm(`mean stem width (mm)` ~ age, data = diffs_by_age)
-anova(width_mod)
-
-# Pull out bgb and root:shoot to show systematic differences
-
-
+anova(width_mod) # ns
