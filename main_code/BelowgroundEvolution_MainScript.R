@@ -4,7 +4,8 @@
 # main_code folder
 
 ## Load libraries ####
-library(tidyverse); library(ggmcmc); library(rjags); library(lme4); library(here)
+library(tidyverse); library(ggmcmc); library(rjags); library(lme4)
+library(here); library(rCTM); library(mvtnorm); library(emmeans)
 
 
 ## Read in data ####
@@ -433,7 +434,7 @@ mean_difference_bypot <- function(trait, additive_samples){
 }
 
 # Calculate average difference for each pot for each trait
-diffs_biomass <- mean_difference_bypot("agb", biomass_additive)
+diffs_agb <- mean_difference_bypot("agb", agb_additive)
 diffs_density <- mean_difference_bypot("density", density_additive)
 diffs_height<- mean_difference_bypot("mean_tot_height", height_additive)
 diffs_width <- mean_difference_bypot("mean_mid_width", width_additive)
@@ -444,7 +445,7 @@ diffs_beta <- mean_difference_bypot("beta", beta_additive)
 # Create a data frame with all average differences and age cohort information
 tibble(poly_traits) %>%
   arrange(pot) %>%
-  mutate(`aboveground biomass (g)` = diffs_biomass$x,
+  mutate(`aboveground biomass (g)` = diffs_agb$x,
          `stem density` = diffs_density$x,
          `mean stem height (cm)` = diffs_height$x,
          `mean stem width (mm)` = diffs_width$x,
@@ -486,13 +487,54 @@ anova(width_mod) # ns
 
 ## Cohort Marsh Equilibrium Model Simulations
 
-library(rCTM); library(tidyverse); library(ggmcmc)
 colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
 
-## Preliminaries ####
+
+## Cohort Marsh Equilibrium Model Simulations
 
 # Parameter estimates for bMax and root:shoot from Blue Genes 2019 experiment
-source(here("chp1/code/MS_code/mem_params_BlueGenes.R"))
+blue_genes <- read_rds(here("supp_data", "blue_genes_subdata.rds"))
+
+# Fit a parabola for the aboveground biomass data
+quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes)
+# Extract quadratic regression coefficients
+coefs <- as.numeric(coef(quad_mod))
+
+# Create a function to solve for roots of quadratic formula
+quadraticRoots <- function(a, b, c) {
+  discriminant <- (b^2) - (4*a*c)
+  x_int_plus <- (-b + sqrt(discriminant)) / (2*a)
+  x_int_neg <- (-b - sqrt(discriminant)) / (2*a)
+  xints <- c(x_int_plus, x_int_neg)
+  return(xints)
+}
+
+# Extract roots (these are the same as the min and max elevations at which
+# biomass can exist)
+roots <- quadraticRoots(coefs[3], coefs[2], coefs[1])
+zMax_for_sim <- roots[2]
+zMin_for_sim <- roots[1]
+
+# Find peak biomass given a symmetric parabola
+zPeak <- (zMax_for_sim + zMin_for_sim) / 2
+
+# Calculate the predicted biomass at that elevation (bMax)
+bMax <- predict(quad_mod, newdata = data.frame(elevation = zPeak))
+# Convert to g / cm2
+pot_area_cm2 <- pi * 5.08^2
+bMax_for_sim <- bMax / pot_area_cm2
+
+# Calculate average root-to-shoot ratio (Note: CMEM assumes static root-to-shoot
+# ratio across elevations)
+
+blue_genes %>% 
+  # If agb_scam is really low, then root:shoot will be really high just because
+  # of the initial propagule's rhizome weight, so we filter out for agb_scam >
+  # 0.1
+  filter(agb_scam > 0.1) %>% 
+  mutate(rs = total_bg / agb_scam) %>% 
+  pull(rs) %>% 
+  mean() -> rootShoot_for_sim
 
 # Create function to collect mean and sd from each bayesian regression model
 get_cv <- function(coda_object){
@@ -502,21 +544,20 @@ get_cv <- function(coda_object){
     summarize(mean = mean(value)) %>% 
     spread(key = Parameter, value = mean) %>% 
     mutate(cv = sigma.int / mu.alpha) -> out
-  
   return(out)
 }
 
 # Collect mean and sd of each of the traits: aboveground biomass, root:shoot
 # ratio, and root distribution parameter
-biomass_sum <- get_cv(readRDS("chp1/results/biomass_monomodel.rds"))
-rs_sum <- get_cv(readRDS("chp1/results/rs_monomodel.rds"))
-beta_sum <- get_cv(readRDS("chp1/results/beta_monomodel.rds"))
+biomass_sum <- get_cv(read_rds(here("outputs/monoculture_models/", "agb_monomodel.rds")))
+rs_sum <- get_cv(read_rds(here("outputs/monoculture_models/", "rs_monomodel.rds")))
+beta_sum <- get_cv(read_rds(here("outputs/monoculture_models/", "beta_monomodel.rds")))
 
-mean_vec <- c(BlueGenes_Params_forsim$bMax, BlueGenes_Params_forsim$rootToShoot, beta_sum$mu.alpha)
-#mean_vec <- c(0.1, 2, beta_sum$mu.alpha)
+# Make a vector of the means for each parameter (agb and rs come from blue genes
+# and beta comes from our data)
+mean_vec <- c(bMax_for_sim, rootShoot_for_sim, beta_sum$mu.alpha)
 
 # Scale biomass to g/cm^2
-# Pots are 7.62^2*pi cm2
 pot_area <- 7.62^2*pi
 biomass_sum %>% 
   mutate(mu.alpha.scaled = mu.alpha / pot_area,
@@ -525,32 +566,33 @@ biomass_sum %>%
 ## All variation - vary due to genotype ####
 # Create covariance matrix if we assume that variance is the same, but means are
 # different (conservative assumption)
-mono_all <- readRDS("chp1/results/mono_all_derived.rds")
 
-# Maximum biomass estimates from blue genes
+# Calculate constants that quantify how much larger bMax and rootToShoot are in
+# Blue Genes versus this experiment
 biomass_scale <- mean_vec[1] / biomass_sum$mu.alpha.scaled
 rs_scale <- mean_vec[2] / rs_sum$mu.alpha
 
+# Calculate variances due to genotype given this scaling (following standard
+# deviation and variance rules)
 var_biomass <- (biomass_sum$sigma.int.scaled * biomass_scale)^2
 var_rs <- (rs_sum$sigma.int * rs_scale)^2
-var_beta <- beta_sum$sigma.int^2 # keep beta the same because it's not off of what we might expect
+# Keep beta the same because the mean is not off of what we might expect
+var_beta <- beta_sum$sigma.int^2 
 
+# Calculate covariances between traits based on standard deviations due to
+# genotype as well as correlations between traits
+covar_biomass_rs <- biomass_sum$sigma.int.scaled * rs_sum$sigma.int * cor(mono_traits$agb, mono_traits$rs)
+covar_biomass_beta <- biomass_sum$sigma.int.scaled * beta_sum$sigma.int * cor(mono_traits$agb, mono_traits$beta)
+covar_rs_beta <- rs_sum$sigma.int * beta_sum$sigma.int * cor(mono_traits$rs, mono_traits$beta)
 
-# var_biomass <- biomass_sum$sigma.int.scaled^2
-# var_rs <- rs_sum$sigma.int^2
-# var_beta <- beta_sum$sigma.int^2
-
-covar_biomass_rs <- biomass_sum$sigma.int.scaled * rs_sum$sigma.int * cor(mono_all$total_biomass, mono_all$rs)
-covar_biomass_beta <- biomass_sum$sigma.int.scaled * beta_sum$sigma.int * cor(mono_all$total_biomass, mono_all$beta)
-covar_rs_beta <- rs_sum$sigma.int * beta_sum$sigma.int * cor(mono_all$rs, mono_all$beta)
-
+# Create covariance matrix
 covar_matrix <- matrix(c(var_biomass, covar_biomass_rs, covar_biomass_beta,
                          covar_biomass_rs, var_rs, covar_rs_beta,
                          covar_biomass_beta, covar_rs_beta, var_beta),
                        nrow = 3, byrow = T)
 
-# Take 1000 draws from multivariate normal distribution
-samples1 <- mvtnorm::rmvnorm(1000, mean = mean_vec, covar_matrix)
+# Take 1000 draws from this multivariate normal distribution
+samples1 <- rmvnorm(1000, mean = mean_vec, covar_matrix)
 
 # Translate beta values to maximum rooting depth
 depth_interval <- seq(0,50,length.out = 1000)
@@ -566,29 +608,42 @@ for(i in 1:nrow(samples1)){
 # Put all data for simulations into a data frame
 tibble(`aboveground biomass (g)` = samples1[,1],
        `root:shoot ratio` = samples1[,2],
-       `maximum rooting depth (cm)` = rooting_depth) -> for_MEM1
+       `maximum rooting depth (cm)` = rooting_depth) -> for_MEM
 
-saveRDS(for_MEM1,"chp1/results/randomdrawsMEM.rds")
+# Save these samples for later
+saveRDS(for_MEM, here("outputs/CMEM_runs/", "traits_for_MEM_simulations.rds"))
 
 # Create storage for MEM model runs
-n_runs <- 100
-run_store1 <- matrix(NA, nrow = n_runs, ncol = 100)
-carbon_store <- matrix(NA, nrow = n_runs, ncol = 100)
-flood_store <- matrix(NA, nrow = n_runs, ncol = 100)
+n_runs <- 1000
+# Store surface elevation
+run_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
+# Stores carbon sequestration
+carbon_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
 
+# Loop through all of the possible draws (n = 1000) of trait values and push
+# through CMEM. Store the elevation between time = 0 (i.e. 2020) and time = 80
+# (i.e. 2100) and also calculate the amount of carbon mass at each timestep.
 for (i in 1:n_runs){
   mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
-                          lunarNodalAmp=0, bMax = for_MEM1$`aboveground biomass (g)`[i], 
-                          zVegMin=BlueGenes_Params_forsim$zVegMin, zVegMax=BlueGenes_Params_forsim$zVegMax, zVegPeak=NA,
-                          plantElevationType="orthometric", rootToShoot = for_MEM1$`root:shoot ratio`[i],
-                          rootTurnover=0.5, rootDepthMax=for_MEM1$`maximum rooting depth (cm)`[i], omDecayRate=0.8,
+                          lunarNodalAmp=0,
+                          # Iterate through bMax values
+                          bMax = for_MEM$`aboveground biomass (g)`[i], 
+                          # Use zMin and zMax (in cm) from Blue Genes experiment
+                          zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100,
+                          zVegPeak=NA,
+                          plantElevationType="orthometric",
+                          # Iterate through root-to-shoot ratio
+                          rootToShoot = for_MEM$`root:shoot ratio`[i],
+                          rootTurnover=0.5,
+                          # Iterate through maximum rooting depth
+                          rootDepthMax=for_MEM$`maximum rooting depth (cm)`[i],
+                          omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
-  run_store1[i,] <- mem_out$annualTimeSteps$surfaceElevation
+  run_store[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
-  flood_store[i,] <- mem_out$annualTimeSteps$meanHighWater - mem_out$annualTimeSteps$surfaceElevation
-  
+  # Calculate amount of carbon at each time step
   mem_out$cohorts %>% 
     mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
            perc_C = 0.4*loi + 0.0025*loi^2,
@@ -599,43 +654,56 @@ for (i in 1:n_runs){
 }
 
 par(mar = c(4,4,2,2))
-plot(run_store1[1,1:80], type = "n", ylim = c(22.6,35), xlab = "time forward (years)",
+plot(run_store[1,1:80], type = "n", ylim = c(22.6,35), xlab = "time forward (years)",
      ylab = "marsh elevation (cm)")
 for(i in 1:n_runs){
-  lines(run_store1[i,1:80], col = rgb(0,0,0,0.2))
+  lines(run_store[i,1:80], col = rgb(0,0,0,0.2))
 }
 
 # Calculate CIs around average accretion rate
 init_elev <- 22.6
-avg_accretion_rates1 <- (run_store1[,80] - init_elev) / 80
-avg_acc_rate_ci1 <- quantile(avg_accretion_rates1, c(0.025, 0.5, 0.975))
-avg_acc_rate_ci1[3]/avg_acc_rate_ci1[1] #109% increase (more than double)
+avg_accretion_rates <- (run_store[,80] - init_elev) / 80
+# Calculate interquartile range
+avg_acc_rate_ci <- quantile(avg_accretion_rates, c(0.25, 0.5, 0.75))
+# 25%        50%        75% 
+# 0.06841394 0.08205134 0.09587447
+avg_acc_rate_ci[3]/avg_acc_rate_ci[1] # 40% increase (more than double)
 
-# Calculate CIs around carbon accumulation rate
+# Calculate CIs around average carbon accumulation rate
 avg_C_accum_rate <- (carbon_store[,80] - carbon_store[,1]) / 80
-avg_C_accum_rate_ci <- quantile(avg_C_accum_rate, c(0.025, 0.5, 0.975))
-avg_C_accum_rate_ci[3]/avg_C_accum_rate_ci[1] # 158% increase (more than double)
-
-# Convert C accumulation rates to metric tons per hectare (x metric tons / hectare conversion factors)
-avg_C_accum_rate * 1e-6 / 1e-8
+# Calculate interquartile range
+avg_C_accum_rate_ci <- quantile(avg_C_accum_rate, c(0.25, 0.5, 0.75))
+#         25%         50%         75% 
+# 0.001908980 0.002413024 0.002916869 
+avg_C_accum_rate_ci[3]/avg_C_accum_rate_ci[1] # 53% increase
 
 ## All variation - vary by cohort mean ####
-cs_all <- mono_all %>% filter(location %in% c('corn', "sellman"))
+
+# Subset data for just corn and sellman locations
+cs_traits <- mono_traits %>% filter(location %in% c('corn', "sellman"))
+
+# Fit linear mixed models and extract predicted means. Then scale by the same
+# factor for biomass and root-to-shoot ratio as in the previous simulations.
 
 # Root:shoot
-rs_mod_formeans <- lmer(rs ~ frame + ic_weight + ln_depth + location + age + (1|genotype), data = cs_all)
+rs_mod_formeans <- lmer(rs ~ frame + ic_weight + ln_depth + location + age + (1|genotype), data = cs_traits)
+# Extract means: order is corn-ancestral, sellman-ancestral, corn-modern,
+# sellman-modern
 means_rs <- summary(emmeans(rs_mod_formeans, ~ location:age))$emmean
-bg_rs_scale <- BlueGenes_Params_forsim$rootToShoot / mean(means_rs)
+# Scale based on blue genes means
+bg_rs_scale <- rootShoot_for_sim / mean(means_rs)
 root_shoot_cohort_forMEM <- means_rs * bg_rs_scale
 
 # Biomass
-biomass_mod_formeans <- lmer(total_biomass ~ ic_weight + frame + ln_depth + location + age + (1|genotype), data = cs_all)
-means_biomass <- summary(emmeans(biomass_mod_formeans, ~ location:age))$emmean / pot_area
-bg_biomass_scale <- BlueGenes_Params_forsim$bMax / mean(means_biomass)
-biomass_cohort_forMEM <- means_biomass * bg_biomass_scale
+agb_mod_formeans <- lmer(agb ~ ic_weight + frame + ln_depth + location + age + (1|genotype), data = cs_traits)
+# Extract means and convert to g/cm2
+means_agb <- summary(emmeans(agb_mod_formeans, ~ location:age))$emmean / pot_area
+# Scale based on blue genes means
+bg_agb_scale <- bMax_for_sim / mean(means_agb)
+agb_cohort_forMEM <- means_agb * bg_agb_scale
 
 # Root distribution parameter
-beta_mod_formeans <- lm(beta ~ frame + ic_weight + ln_depth + location + age, data = cs_all)
+beta_mod_formeans <- lm(beta ~ frame + ic_weight + ln_depth + location + age, data = cs_traits)
 means_betas <- summary(emmeans(beta_mod_formeans, ~ location:age))$emmean
 
 # Translate beta values to maximum rooting depth
@@ -651,23 +719,21 @@ for(i in 1:length(means_betas)){
 
 betas_cohort_forMEM <- rooting_depth
 
-# Run model for each cohort
+# Run model for each cohort and store surface elevation and carbon accumulation
 run_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 carbon_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
-flood_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 
 for (i in 1:4){
   mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
-                          lunarNodalAmp=0, bMax = biomass_cohort_forMEM[i], 
-                          zVegMin=BlueGenes_Params_forsim$zVegMin, zVegMax=BlueGenes_Params_forsim$zVegMax, zVegPeak=NA,
+                          lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
+                          zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = root_shoot_cohort_forMEM[i],
                           rootTurnover=0.5, rootDepthMax=rooting_depth[i], omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
   run_store_cohort[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
-  flood_store_cohort[i,] <- mem_out$annualTimeSteps$meanHighWater - mem_out$annualTimeSteps$surfaceElevation
   
   mem_out$cohorts %>% 
     mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
@@ -678,91 +744,99 @@ for (i in 1:4){
   print(i)
 }
 
-# Calculate CIs around average accretion rate
+# Calculate CIs around average accretion rate - everything is in the same order
+# as before: corn-ancestral, sellman-ancestral, corn-modern, sellman-modern
+
+# Calculate average accretion rates
 init_elev <- 22.6
 avg_accretion_rates_cohort <- (run_store_cohort[,80] - init_elev) / 80
-avg_accretion_rates_cohort[1]/avg_accretion_rates_cohort[4] # 24% increase in accretion rate from lowest to highest
 
-# Calculate CIs around carbon accumulation rate
+# Calculate average carbon accumulation rates
 avg_C_accum_rate_cohort <- (carbon_store_cohort[,80] - carbon_store_cohort[,1]) / 80
-avg_C_accum_rate_cohort[1]/avg_C_accum_rate_cohort[4] # 32% increase in carbon accumulation rate from lowest to highest
 
-# # Convert C accumulation rates to metric tons per hectare (x metric tons / hectare conversion factors)
-# avg_C_accum_rate_cohort * 1e-6 / 1e-8
-
+# Create a data frame to hold all of that information
 tibble(location = c("corn", "sellman", "corn", "sellman"),
        age = c("ancestral", "ancestral", "modern", "modern"),
        acc_v = avg_accretion_rates_cohort * 10,
        acc_C = avg_C_accum_rate_cohort * 1e-6 / 1e-8) -> cohort_summary
 
-elevation_store_df <- as.data.frame(run_store1)
+# Join together data frame of simulations based on genotypic variation and
+# cohort simulations
+elevation_store_df <- as.data.frame(run_store)
 elevation_store_withcohorts <- rbind(elevation_store_df[,1:80], run_store_cohort[,1:80])
-colnames(elevation_store_withcohorts) <- 1:80
+colnames(elevation_store_withcohorts) <- 2021:2100
 
+# Reformat data into long format
 tibble(elevation_store_withcohorts) %>% 
-  mutate(iteration = 1:104) %>% 
-  gather(key = year, value = value, `1`:`80`) %>% 
-  mutate(year = as.numeric(year) + 2020) %>% 
-  mutate(color_code = case_when(iteration == 101 ~ 1,
-                                iteration == 102 ~ 2,
-                                iteration == 103 ~ 3,
-                                iteration == 104 ~ 4,
-                                T ~ 0),
-         size_code = case_when(iteration > 100 ~ "big",
-                               T ~ "small")) %>% 
-  ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) + 
-  geom_line(aes(alpha = size_code)) +
-  ylab("marsh elevation (cm NAVD88)") +
-  scale_color_manual(values = c("gray11", colors[1], colors[4], colors[1], colors[4])) +
-  scale_size_manual(values = c(1.5,0.8)) +
-  scale_alpha_manual(values = c(0.8, 0.2)) +
-  geom_point(aes(x = 2100, y = run_store_cohort[1,80]), color = colors[1], size = 3) +
-  geom_point(aes(x = 2100, y = run_store_cohort[2,80]), color = colors[4], size = 3) +
-  geom_point(aes(x = 2100, y = run_store_cohort[3,80]), color = colors[1], size = 3, shape = 17) +
-  geom_point(aes(x = 2100, y = run_store_cohort[4,80]), color = colors[4], size = 3, shape = 17) +
-  theme(legend.position = "none") +
-  ylim(22,33.5)-> Fig4_panelA
+  mutate(iteration = as.character(1:nrow(elevation_store_withcohorts))) %>% 
+  gather(key = year, value = value, `2021`:`2100`) %>% 
+  mutate(iteration = case_when(iteration == "1001" ~ "corn-ancestral",
+                               iteration == "1002" ~ "sellman-ancestral",
+                               iteration == "1003" ~ "corn-modern",
+                               iteration == "1004" ~ "sellman-modern",
+                               T ~ iteration))  -> CMEM_predictions_belowground
 
-tibble(acc_rate = avg_accretion_rates1*10) %>% 
-  ggplot(aes(x = acc_rate)) +
-  geom_histogram(bins=10, color = "black", fill = "white") +
-  xlab(expression(paste("vertical accretion rate (mm ",yr^-1,")"))) +
-  geom_point(aes(x = cohort_summary$acc_v[1], y = 0), color = colors[1], size = 3) +
-  geom_point(aes(x = cohort_summary$acc_v[2], y = 0), color = colors[4], size = 3) +
-  geom_point(aes(x = cohort_summary$acc_v[3], y = 0), color = colors[1], size = 3, shape = 17)+
-  geom_point(aes(x = cohort_summary$acc_v[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelB
 
-tibble(acc_rate = avg_C_accum_rate * 1e-6 / 1e-8) %>% 
-  ggplot(aes(x = acc_rate)) +
-  geom_histogram(bins = 10, fill = "white", color = "black") +
-  xlab(expression(paste("carbon accumulation rate (t C ", ha^-1, yr^-1,")"))) +
-  geom_point(aes(x = cohort_summary$acc_C[1], y = 0), color = colors[1], size = 3) +
-  geom_point(aes(x = cohort_summary$acc_C[2], y = 0), color = colors[4], size = 3) +
-  geom_point(aes(x = cohort_summary$acc_C[3], y = 0), color = colors[1], size = 3, shape = 17) +
-  geom_point(aes(x = cohort_summary$acc_C[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelC 
-
-Fig4_panelsBC <- cowplot::plot_grid(Fig4_panelB, Fig4_panelC, nrow = 2, labels = c("b", "c"))
-Fig4_panelA_label <- cowplot::plot_grid(Fig4_panelA, labels = "a")
+#   mutate(year = as.numeric(year) + 2020) %>% 
+#   mutate(color_code = case_when(iteration == 101 ~ 1,
+#                                 iteration == 102 ~ 2,
+#                                 iteration == 103 ~ 3,
+#                                 iteration == 104 ~ 4,
+#                                 T ~ 0),
+#          size_code = case_when(iteration > 100 ~ "big",
+#                                T ~ "small")) %>% 
+#   ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) + 
+#   geom_line(aes(alpha = size_code)) +
+#   ylab("marsh elevation (cm NAVD88)") +
+#   scale_color_manual(values = c("gray11", colors[1], colors[4], colors[1], colors[4])) +
+#   scale_size_manual(values = c(1.5,0.8)) +
+#   scale_alpha_manual(values = c(0.8, 0.2)) +
+#   geom_point(aes(x = 2100, y = run_store_cohort[1,80]), color = colors[1], size = 3) +
+#   geom_point(aes(x = 2100, y = run_store_cohort[2,80]), color = colors[4], size = 3) +
+#   geom_point(aes(x = 2100, y = run_store_cohort[3,80]), color = colors[1], size = 3, shape = 17) +
+#   geom_point(aes(x = 2100, y = run_store_cohort[4,80]), color = colors[4], size = 3, shape = 17) +
+#   theme(legend.position = "none") +
+#   ylim(22,33.5)-> Fig4_panelA
+# 
+# tibble(acc_rate = avg_accretion_rates1*10) %>% 
+#   ggplot(aes(x = acc_rate)) +
+#   geom_histogram(bins=10, color = "black", fill = "white") +
+#   xlab(expression(paste("vertical accretion rate (mm ",yr^-1,")"))) +
+#   geom_point(aes(x = cohort_summary$acc_v[1], y = 0), color = colors[1], size = 3) +
+#   geom_point(aes(x = cohort_summary$acc_v[2], y = 0), color = colors[4], size = 3) +
+#   geom_point(aes(x = cohort_summary$acc_v[3], y = 0), color = colors[1], size = 3, shape = 17)+
+#   geom_point(aes(x = cohort_summary$acc_v[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelB
+# 
+# tibble(acc_rate = avg_C_accum_rate * 1e-6 / 1e-8) %>% 
+#   ggplot(aes(x = acc_rate)) +
+#   geom_histogram(bins = 10, fill = "white", color = "black") +
+#   xlab(expression(paste("carbon accumulation rate (t C ", ha^-1, yr^-1,")"))) +
+#   geom_point(aes(x = cohort_summary$acc_C[1], y = 0), color = colors[1], size = 3) +
+#   geom_point(aes(x = cohort_summary$acc_C[2], y = 0), color = colors[4], size = 3) +
+#   geom_point(aes(x = cohort_summary$acc_C[3], y = 0), color = colors[1], size = 3, shape = 17) +
+#   geom_point(aes(x = cohort_summary$acc_C[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelC 
+# 
+# Fig4_panelsBC <- cowplot::plot_grid(Fig4_panelB, Fig4_panelC, nrow = 2, labels = c("b", "c"))
+# Fig4_panelA_label <- cowplot::plot_grid(Fig4_panelA, labels = "a")
 
 ##
 # Calculations for in-text
 ##
 
 # Differences in final marsh elevation due to genotype
-mean(run_store1[,80]) # 29.13397
-quantile(run_store1[,80], c(0.025, 0.975)) # 27.34588 32.22798 
+mean(run_store[,80]) # 29.33026
+quantile(run_store[,80], c(0.025, 0.975)) # 26.66471 33.08620 
 
-# Vertical accretion rates
+# Average vertical accretion rates
 init_elev <- 22.6
-avg_accretion_rates1 <- (run_store1[,80] - init_elev) / 80
-mean(avg_accretion_rates1)
-quantile(avg_accretion_rates1, c(0.025, 0.975))
+avg_accretion_rates <- (run_store[,80] - init_elev) / 80
+mean(avg_accretion_rates)
+quantile(avg_accretion_rates, c(0.025, 0.975))
 
-# Carbon accumulation rates
+# Average carbon accumulation rates
 avg_C_accum_rate <- (carbon_store[,80] - carbon_store[,1]) / 80
 mean(avg_C_accum_rate)
 quantile(avg_C_accum_rate, c(0.025, 0.975))
-quantile(avg_C_accum_rate, c(0.975)) - quantile(avg_C_accum_rate, c(0.025))
 
 # % diff accretion rate for ecotypes and age cohorts
 # Increase accretion rate from sellman to corn
@@ -773,11 +847,11 @@ mean(cohort_summary$acc_v[c(1,3)]) / mean(cohort_summary$acc_v[c(2,4)])
 mean(cohort_summary$acc_v[c(1,2)]) / mean(cohort_summary$acc_v[c(3,4)])
 
 # Same for C accumulation
-# Increase accretion rate from sellman to corn
+# Increase carbon accumulation rate from sellman to corn
 mean(cohort_summary$acc_C[c(1,3)]) / mean(cohort_summary$acc_C[c(2,4)])
-# Decrease in accretion rate from ancestral to modern
+# Decrease in carbon accumulation rate from ancestral to modern
 (mean(cohort_summary$acc_C[c(1,2)]) - mean(cohort_summary$acc_C[c(3,4)])) / mean(cohort_summary$acc_C[c(1,2)])
-# Increase in accretion rate from modern to ancestral
+# Increase in carbon accumulation rate from modern to ancestral
 mean(cohort_summary$acc_C[c(1,2)]) / mean(cohort_summary$acc_C[c(3,4)])
 
 
