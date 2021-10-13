@@ -5,7 +5,7 @@
 # Load libraries
 library(patchwork);library(raster); library(maps); library(cowplot);
 library(ggsn); library(ggmap); library(tidyverse);
-library(ggrepel); library(here); library(mvtnorm)
+library(ggrepel); library(here); library(mvtnorm); library(GGally)
 
 ## Read in data
 # Derived trait data for all pots
@@ -16,7 +16,9 @@ for_seed_depths <- read_csv(here("supp_data", "AbovegroundBiomass.csv"))
 # germination paper
 seed_age_priors <- readRDS(here("supp_data", "SeedAgeCalibrationPriors.rds"))
 # Results from monoculture/polyculture analysis
-#diffs_by_age <- readRDS("chp1/results/monopoly_diffsbyage.rds")
+diffs_by_age <- readRDS(here("outputs/monoculture_polyculture/", "diffs_by_age.rds"))
+# Blue genes data to inform mean adjustments for CMEM simulation
+blue_genes <- read_rds("supp_data/blue_genes_subdata.rds")
 
 # Set site colors for mapping and figures below
 colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
@@ -226,39 +228,114 @@ png(here("figs_tables", "FigureS6_widthAge.png"), height = 2.7, width = 3.5,
 width_age
 dev.off()
 
-# ## Figure S7 & Table SX: monopoly diffs by age ####
-# png("chp1/plots/MS_plots/FigureS7_monopoly_byAge.png", height = 4, width = 10, units = "in", res = 300)
-# diffs_by_age %>% 
-#   gather(key = trait, value = difference, `aboveground biomass (g)`:`root distribution parameter`) %>% 
-#   mutate(trait = factor(trait, levels = c("aboveground biomass (g)",
-#                                           "stem density",
-#                                           "mean stem height (cm)",
-#                                           "mean stem width (mm)",
-#                                           "belowground biomass (g)",
-#                                           "root:shoot ratio",
-#                                           "root distribution parameter"))) %>% 
-#   mutate(cohort = age) %>% 
-#   ggplot(aes(x = cohort, y = difference, pch = cohort)) +
-#   geom_boxplot(outlier.shape = NA)+
-#   geom_jitter(height = 0, width = 0.2, alpha = 0.2, size = 3) +
-#   facet_wrap(~trait, scales = "free_y", nrow = 2) +
-#   scale_shape_manual(values = c(16,8,17)) +
-#   ylab("scaled difference")
-# dev.off()
-# # Also test for differences across age cohorts
-# anova(lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)) # ns
-# anova(lm(`stem density` ~ age, data = diffs_by_age)) # ns
-# anova(lm(`mean stem height (cm)` ~ age, data = diffs_by_age)) # ns
-# anova(lm(`mean stem width (mm)` ~ age, data = diffs_by_age)) # ns
-# anova(lm(`belowground biomass (g)` ~ age, data = diffs_by_age)) # .
-# anova(lm(`root:shoot ratio` ~ age, data = diffs_by_age)) # *
-# anova(lm(`root distribution parameter` ~ age, data = diffs_by_age)) # ns
-# 
-# 
-# 
-# ## Figure S8: trait space for MEM simulations ####
-# for_MEM1 <- readRDS("chp1/results/randomdrawsMEM.rds")
-# 
-# png("chp1/plots/MS_plots/FigureS8_randomdrawsMEM.png", width = 6.7, height = 5.7, res = 300, units = "in")
-# GGally::ggpairs(for_MEM1, lower = list(continuous = wrap("smooth", alpha = 0.3, size=1)))
-# dev.off()
+## Figure S7 & Table SX: monopoly diffs by age ####
+diffs_by_age %>%
+  gather(key = trait, value = difference, `aboveground biomass (g)`:`root distribution parameter`) %>%
+  mutate(trait = factor(trait, levels = c("aboveground biomass (g)",
+                                          "stem density",
+                                          "mean stem height (cm)",
+                                          "mean stem width (mm)",
+                                          "belowground biomass (g)",
+                                          "root:shoot ratio",
+                                          "root distribution parameter"))) %>%
+  mutate(cohort = age) %>%
+  ggplot(aes(x = cohort, y = difference, pch = cohort)) +
+  geom_boxplot(outlier.shape = NA)+
+  geom_jitter(height = 0, width = 0.2, alpha = 0.2, size = 3) +
+  facet_wrap(~trait, scales = "free_y", nrow = 2) +
+  scale_shape_manual(values = c(16,8,17)) +
+  ylab("scaled difference") + theme_classic() +
+  theme(legend.position = c(1, 0.1),
+        legend.justification = c(1.6, 0)) -> fig_S7
+
+png(here("figs_tables","FigureS7_monopoly_byAge.png"), height = 4, width = 10, units = "in", res = 300)
+fig_S7
+dev.off()
+
+# Also test for differences across age cohorts
+anova(lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`stem density` ~ age, data = diffs_by_age)) # ns
+anova(lm(`mean stem height (cm)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`mean stem width (mm)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`belowground biomass (g)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`root:shoot ratio` ~ age, data = diffs_by_age)) # ns
+anova(lm(`root distribution parameter` ~ age, data = diffs_by_age)) # .
+
+## Figure S8: trait space for MEM simulations ####
+
+for_MEM_full <- readRDS(here("outputs/CMEM_runs", "traits_for_MEM_simulations.rds"))
+
+png(here("figs_tables","FigureS8_randomdrawsMEM.png"), width = 6.7, height = 5.7,
+    res = 300, units = "in")
+ggpairs(for_MEM_full, lower = list(continuous = wrap("smooth", alpha = 0.3, size=1))) +
+  theme_bw() + ylab("trait value") + xlab("trait value")
+dev.off()
+
+## Figure S9: Blue genes parameter values ####
+
+# Parameter estimates for bMax and root:shoot from Blue Genes 2019 experiment
+blue_genes <- read_rds(here("supp_data", "blue_genes_subdata.rds"))
+
+# Fit a parabola for the aboveground biomass data
+quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes)
+# Extract quadratic regression coefficients
+coefs <- as.numeric(coef(quad_mod))
+
+# Create a function to solve for roots of quadratic formula
+quadraticRoots <- function(a, b, c) {
+  discriminant <- (b^2) - (4*a*c)
+  x_int_plus <- (-b + sqrt(discriminant)) / (2*a)
+  x_int_neg <- (-b - sqrt(discriminant)) / (2*a)
+  xints <- c(x_int_plus, x_int_neg)
+  return(xints)
+}
+
+# Extract roots (these are the same as the min and max elevations at which
+# biomass can exist)
+roots <- quadraticRoots(coefs[3], coefs[2], coefs[1])
+zMax_for_sim <- roots[2]
+zMin_for_sim <- roots[1]
+
+# Find peak biomass given a symmetric parabola
+zPeak <- (zMax_for_sim + zMin_for_sim) / 2
+
+# Calculate the predicted biomass at that elevation (bMax)
+bMax <- predict(quad_mod, newdata = data.frame(elevation = zPeak))
+# Convert to g / cm2
+pot_area_cm2 <- pi * 5.08^2
+bMax_for_sim <- bMax / pot_area_cm2
+
+# Convert the data to g/cm2 as well
+blue_genes$agb_scam_g_cm2 <- blue_genes$agb_scam / pot_area_cm2
+
+# Figure S9a: biomass elevation parabola
+blue_genes %>% 
+  ggplot(aes(x = elevation*100, y = agb_scam_g_cm2)) + 
+  geom_point(alpha = 0.2) +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE, fullrange = T, size = 2, color = "gray47") +
+  geom_hline(aes(yintercept = bMax_for_sim), linetype = "dashed", col = "purple", size = 1.5) +
+  geom_vline(aes(xintercept = zMin_for_sim*100), linetype = "dotted", col = "darkgreen", size = 1.5)+
+  geom_vline(aes(xintercept = zMax_for_sim*100), linetype = "dotted", col = "darkgreen", size = 1.5) +
+  ylim(0, 0.22) +
+  ylab(expression(paste("aboveground biomass (g/", m^2, ")"))) +
+  xlab("elevation (cm NAVD88)") +
+  geom_point(aes(x = (zMin_for_sim*100 + zMax_for_sim*100)/2, y = bMax_for_sim), size = 5, color = "purple")+
+  geom_point(aes(x = zMin_for_sim*100, y = 0), size = 5, color = "darkgreen") + 
+  geom_point(aes(x = zMax_for_sim*100, y = 0), size = 5, color = "darkgreen") +
+  theme_bw() -> fig_S9a
+
+# Figure S9b: root-shoot
+blue_genes %>%
+  mutate(rs = total_bg / agb_scam) %>% 
+  filter(rs < 6) %>% 
+  ggplot(aes(x = rs)) +
+  geom_histogram(binwidth = 0.5) +
+  xlab("root-to-shoot ratio") +
+  geom_vline(aes(xintercept = mean(total_bg/agb_scam)), linetype = "dashed", color = "orange", size = 1.5) +
+  geom_point(aes(x = mean(total_bg/agb_scam), y = 0), size = 5, color = "orange") +
+  theme_bw() + ylab("count") -> fig_S9b
+
+png(here("figs_tables", "FigS9_BlueGenesParams.png"), height = 3.5, width = 6.5, res = 300, units = "in")
+plot_grid(fig_S9a, fig_S9b, labels = "auto",
+                   rel_widths = c(3,2))
+dev.off()

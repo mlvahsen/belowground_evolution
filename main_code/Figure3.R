@@ -199,7 +199,7 @@ tibble(trait = c("abg", "density", "height", "width", "bgb", "rs", "beta"),
   scale_x_discrete(labels = c("root parameter","root:shoot", "bg biomass", "stem width",
                               "stem height", "stem density", "abg biomass")) +
   ylab("proportion of variance") + theme_classic()+ theme(legend.position = "top", legend.title = element_blank()) +
-  guides(fill = guide_legend(reverse = TRUE))
+  guides(fill = guide_legend(reverse = TRUE)) -> stack_plot
 
 
 ## Figure 3b - provenance and age cohort mediate root distribution ####
