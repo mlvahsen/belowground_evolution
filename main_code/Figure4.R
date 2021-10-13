@@ -172,6 +172,6 @@ Fig4_panelsDE <- plot_grid(Fig4_panelD, Fig4_panelE, nrow = 1,
 Fig4_panelsABC <- plot_grid(Fig4_panelA_label, Fig4_panelsBC, rel_widths = c(3,2))
 Fig4_panelsABCDE <- plot_grid(Fig4_panelsABC, Fig4_panelsDE, nrow = 2)
 
-png(here("figs_tables", "Figure4"), height = 6.8, width = 8, units = "in", res = 300)
+png(here("figs_tables", "Figure4.png"), height = 6.8, width = 8, units = "in", res = 300)
 Fig4_panelsABCDE
 dev.off()

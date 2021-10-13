@@ -28,15 +28,18 @@ mono_traits <- all_traits %>%
 source("main_code/jags_fxns.R")
 
 
+
 ## Create a model template that JAGS will use the model matrix for ####
 model_template_mono <- lmer(agb ~ ln_depth + ic_weight + frame +
                          (1|genotype), data = mono_traits)
+
 
 
 ## Set MCMC specifications ####
 n.iter <- 10000
 n.adapt <- 1000
 thin <- 3
+
 
 
 ## Fit all basic trait models ####
@@ -66,6 +69,7 @@ saveRDS(width_out, here("outputs/monoculture_models", "width_monomodel.rds"))
 saveRDS(height_out, here("outputs/monoculture_models", "height_monomodel.rds"))
 saveRDS(density_out, here("outputs/monoculture_models", "density_monomodel.rds"))
 saveRDS(beta_out, here("outputs/monoculture_models", "beta_monomodel.rds"))
+
 
 
 ## Fit all trait models for age + provenance additive effects ####
@@ -98,7 +102,7 @@ bgb_cs_out <- run_models(cs_traits, "bgb", model_template_cs, diag_plot = F)
 ## root-to-shoot ratio
 rs_cs_out <- run_models(cs_traits, "rs", model_template_cs, diag_plot = F)
 ## beta (belowground biomass distribution parameter)
-beta_cs_out <- run_models(cs_traits, "beta", model_template_cs, diag_plot = F)
+beta_cs_out <- run_models_fixed(cs_traits, "beta", model_template_cs, diag_plot = F)
 
 # Save as R data file objects to use later for plotting and subsequent analyses
 saveRDS(agb_cs_out, here("outputs/corn_sellman_models/", "agb_csmodel.rds"))

@@ -1,0 +1,19 @@
+model{
+    alpha ~ dnorm(0, 0.001)
+    
+    for (k in 1:nbeta){
+    beta[k] ~ dnorm(0, 0.001) # Common slopes
+    }
+    
+    sigma.res ~ dunif(0, 100) # Residual standard deviation
+    tau.res <- 1/(sigma.res^2)
+    
+    # Likelihood
+    for (i in 1:length(y)) {
+    mu[i] <- alpha + beta%*%X[i,] 
+    y[i] ~ dnorm(mu[i], tau.res) # The actual (random) responses
+    
+
+    }
+    
+    }

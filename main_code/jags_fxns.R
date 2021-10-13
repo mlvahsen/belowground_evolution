@@ -62,8 +62,49 @@ sink()
 ## Create functions to extract JAGS samples ####
 
 # Define get_samples functions (runs jags and extracts jags.samples and
-# dic.samples) for two types of models (Gaussian w/ genotype random intercept,
-# Poisson w/ genotype random intercept)
+# dic.samples) for three types of models (Gaussian w/ genotype random intercept,
+# Poisson w/ genotype random intercept, Gaussian without genotype random intercept)
+get_samples_fixed <- function(model, data, trait){
+  # Get model matrices from linear models
+  M_all <- as.matrix(model.matrix(model)[ , -1])
+  
+  # Scale (and center) continuous covariates
+  M_all_sc <- M_all
+  M_all_sc[,1] <- scale(M_all[,1], scale = T)
+  M_all_sc[,2] <- scale(M_all[,2], scale = T)
+  
+  # Set up data structure
+  nbeta <- ncol(M_all_sc)
+  y <- pull(data[,trait])
+
+  data_jags = list(
+    y = y,
+    X = M_all_sc,
+    nbeta = nbeta
+  )
+  
+  # Set initial values for chains (2)
+  inits = list(
+    list(
+      alpha = 1,
+      beta = rep(0, nbeta),
+      sigma.res = 20
+    ),
+    list(
+      alpha = 2,
+      beta = rep(5, nbeta),
+      sigma.res = 2
+    )
+  )
+  
+  # Fit JAGS model with gaussian likelihood and genotype as random intercept
+  jm_mono = jags.model("main_code/Gaussian_Model", data=data_jags, 
+                       n.adapt = n.adapt, inits=inits, n.chains=length(inits))
+  # Get DIC samples
+  dic_mono = dic.samples(jm_mono, n.iter = n.iter)
+  
+  # Return both JAGS samples and DIC samples
+  return(list(dic_mono = dic_mono, jm_mono = jm_mono))}
 
 get_samples <- function(model, data, trait){
   # Get model matrices from linear models
@@ -114,8 +155,6 @@ get_samples <- function(model, data, trait){
   
   # Return both JAGS samples and DIC samples
   return(list(dic_mono = dic_mono, jm_mono = jm_mono))}
-
-
 
 get_samples_pois <- function(model, data){# Get model matrices from linear models
   
@@ -207,6 +246,15 @@ run_models <- function(trait_data, trait, model_template, diag_plot = F){
     gelman.diag(samples_coda) 
     
   }
+  
+  return(model_coda)
+  
+}
+
+run_models_fixed <- function(trait_data, trait, model_template, diag_plot = F){
+  # Set up data structure
+  jags_out <- get_samples_fixed(model_template, trait_data, trait)
+  model_coda <- coda.samples(jags_out$jm_mono, variable.names = c("beta", "alpha","sigma.res","sigma.int", "mu.alpha"), n.iter=n.iter, thin = thin)  
   
   return(model_coda)
   
