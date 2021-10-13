@@ -485,7 +485,8 @@ width_mod <- lm(`mean stem width (mm)` ~ age, data = diffs_by_age)
 anova(width_mod) # ns
 
 
-## Cohort Marsh Equilibrium Model Simulations
+
+## Cohort Marsh Equilibrium Model Simulations - All traits vary ####
 
 colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
 
@@ -563,7 +564,11 @@ biomass_sum %>%
   mutate(mu.alpha.scaled = mu.alpha / pot_area,
          sigma.int.scaled = sigma.int / pot_area) -> biomass_sum
 
-## All variation - vary due to genotype ####
+
+##
+# All variation - vary due to genotype 
+##
+
 # Create covariance matrix if we assume that variance is the same, but means are
 # different (conservative assumption)
 
@@ -622,7 +627,8 @@ carbon_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
 
 # Loop through all of the possible draws (n = 1000) of trait values and push
 # through CMEM. Store the elevation between time = 0 (i.e. 2020) and time = 80
-# (i.e. 2100) and also calculate the amount of carbon mass at each timestep.
+# (i.e. 2100) and also calculate the amount of carbon mass at each timestep. (n
+# = 1000 iterations takes about ~25 minutes running time)
 for (i in 1:n_runs){
   mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
@@ -677,7 +683,9 @@ avg_C_accum_rate_ci <- quantile(avg_C_accum_rate, c(0.25, 0.5, 0.75))
 # 0.001908980 0.002413024 0.002916869 
 avg_C_accum_rate_ci[3]/avg_C_accum_rate_ci[1] # 53% increase
 
-## All variation - vary by cohort mean ####
+##
+# All variation - vary by cohort mean 
+##
 
 # Subset data for just corn and sellman locations
 cs_traits <- mono_traits %>% filter(location %in% c('corn', "sellman"))
@@ -776,49 +784,6 @@ tibble(elevation_store_withcohorts) %>%
                                iteration == "1004" ~ "sellman-modern",
                                T ~ iteration))  -> CMEM_predictions_belowground
 
-
-#   mutate(year = as.numeric(year) + 2020) %>% 
-#   mutate(color_code = case_when(iteration == 101 ~ 1,
-#                                 iteration == 102 ~ 2,
-#                                 iteration == 103 ~ 3,
-#                                 iteration == 104 ~ 4,
-#                                 T ~ 0),
-#          size_code = case_when(iteration > 100 ~ "big",
-#                                T ~ "small")) %>% 
-#   ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) + 
-#   geom_line(aes(alpha = size_code)) +
-#   ylab("marsh elevation (cm NAVD88)") +
-#   scale_color_manual(values = c("gray11", colors[1], colors[4], colors[1], colors[4])) +
-#   scale_size_manual(values = c(1.5,0.8)) +
-#   scale_alpha_manual(values = c(0.8, 0.2)) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[1,80]), color = colors[1], size = 3) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[2,80]), color = colors[4], size = 3) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[3,80]), color = colors[1], size = 3, shape = 17) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[4,80]), color = colors[4], size = 3, shape = 17) +
-#   theme(legend.position = "none") +
-#   ylim(22,33.5)-> Fig4_panelA
-# 
-# tibble(acc_rate = avg_accretion_rates1*10) %>% 
-#   ggplot(aes(x = acc_rate)) +
-#   geom_histogram(bins=10, color = "black", fill = "white") +
-#   xlab(expression(paste("vertical accretion rate (mm ",yr^-1,")"))) +
-#   geom_point(aes(x = cohort_summary$acc_v[1], y = 0), color = colors[1], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_v[2], y = 0), color = colors[4], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_v[3], y = 0), color = colors[1], size = 3, shape = 17)+
-#   geom_point(aes(x = cohort_summary$acc_v[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelB
-# 
-# tibble(acc_rate = avg_C_accum_rate * 1e-6 / 1e-8) %>% 
-#   ggplot(aes(x = acc_rate)) +
-#   geom_histogram(bins = 10, fill = "white", color = "black") +
-#   xlab(expression(paste("carbon accumulation rate (t C ", ha^-1, yr^-1,")"))) +
-#   geom_point(aes(x = cohort_summary$acc_C[1], y = 0), color = colors[1], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_C[2], y = 0), color = colors[4], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_C[3], y = 0), color = colors[1], size = 3, shape = 17) +
-#   geom_point(aes(x = cohort_summary$acc_C[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelC 
-# 
-# Fig4_panelsBC <- cowplot::plot_grid(Fig4_panelB, Fig4_panelC, nrow = 2, labels = c("b", "c"))
-# Fig4_panelA_label <- cowplot::plot_grid(Fig4_panelA, labels = "a")
-
 ##
 # Calculations for in-text
 ##
@@ -855,13 +820,14 @@ mean(cohort_summary$acc_C[c(1,3)]) / mean(cohort_summary$acc_C[c(2,4)])
 mean(cohort_summary$acc_C[c(1,2)]) / mean(cohort_summary$acc_C[c(3,4)])
 
 
-## Allow just agb to vary - vary due to genotype ####
 
-# Take 100 draws from normal distribution just for biomass
-samples_Biomass <-rnorm(100, mean = mean_vec[1], sqrt(var_biomass))
+## Cohort Marsh Equilibrium Model Simulations - AGB varies only ####
 
-# Translate beta values to maximum rooting depth
-depth_interval <- seq(0,50,length.out = 1000)
+# Take draws from normal distribution with just aboveground biomass varying 
+samples_agb <-rnorm(1000, mean = mean_vec[1], sqrt(var_biomass))
+
+# Translate mean beta value to maximum rooting depth
+depth_interval <- seq(0, 50, length.out = 1000)
 rooting_depth <- NULL
 
 temp_beta <- mean_vec[3]
@@ -870,157 +836,121 @@ depth_95 <- which.min(abs(temp_cumulative - 0.95))
 rooting_depth <- depth_interval[depth_95]
 
 # Put all data for simulations into a data frame
-tibble(`aboveground biomass (g)` = samples_Biomass,
+tibble(`aboveground biomass (g)` = samples_agb,
        `root:shoot ratio` = mean_vec[2],
-       `maximum rooting depth (cm)` = rooting_depth) -> for_MEM2
+       `maximum rooting depth (cm)` = rooting_depth) -> for_MEM_agb_only
 
-saveRDS(for_MEM2,"chp1/results/randomdrawsMEM_biomass_var.rds")
+# Save these samples for later
+saveRDS(for_MEM_agb_only, here("outputs/CMEM_runs/", "traits_for_MEM_simulations_agb_only.rds"))
 
 # Create storage for MEM model runs
-n_runs <- 100
-run_store2 <- matrix(NA, nrow = n_runs, ncol = 100)
-carbon_store2 <- matrix(NA, nrow = n_runs, ncol = 100)
-flood_store2 <- matrix(NA, nrow = n_runs, ncol = 100)
+n_runs <- 1000
+run_store_agb_only <- matrix(NA, nrow = n_runs, ncol = 100)
+carbon_store_agb_only <- matrix(NA, nrow = n_runs, ncol = 100)
 
+# Run the model for different values of aboveground biomass (n = 1000 iterations
+# takes about ~25 minutes running time)
 for (i in 1:n_runs){
   mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
-                          lunarNodalAmp=0, bMax = for_MEM2$`aboveground biomass (g)`[i], 
-                          zVegMin=BlueGenes_Params_forsim$zVegMin, zVegMax=BlueGenes_Params_forsim$zVegMax, zVegPeak=NA,
-                          plantElevationType="orthometric", rootToShoot = for_MEM2$`root:shoot ratio`[1],
-                          rootTurnover=0.5, rootDepthMax=for_MEM2$`maximum rooting depth (cm)`[1], omDecayRate=0.8,
+                          lunarNodalAmp=0, bMax = for_MEM_agb_only$`aboveground biomass (g)`[i], 
+                          zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
+                          plantElevationType="orthometric", rootToShoot = for_MEM_agb_only$`root:shoot ratio`[1],
+                          rootTurnover=0.5, rootDepthMax=for_MEM_agb_only$`maximum rooting depth (cm)`[1], omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
-  run_store2[i,] <- mem_out$annualTimeSteps$surfaceElevation
-  
-  flood_store2[i,] <- mem_out$annualTimeSteps$meanHighWater - mem_out$annualTimeSteps$surfaceElevation
+  run_store_agb_only[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
   mem_out$cohorts %>% 
     mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
            perc_C = 0.4*loi + 0.0025*loi^2,
            layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
     group_by(year) %>% 
-    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store2[i,]
+    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store_agb_only[i,]
   print(i)
 }
 
 par(mar = c(4,4,2,2))
-plot(run_store2[1,1:80], type = "n", ylim = c(22.6,35), xlab = "time forward (years)",
+plot(run_store_agb_only[1,1:80], type = "n", ylim = c(22.6,35), xlab = "time forward (years)",
      ylab = "marsh elevation (cm)")
-for(i in 1:length(samples_Biomass)){
-  lines(run_store2[i,1:80], col = rgb(0,0,0,0.1))
+for(i in 1:length(samples_agb)){
+  lines(run_store_agb_only[i,1:80], col = rgb(0,0,0,0.1))
 }
 
 # Calculate CIs around average accretion rate
 init_elev <- 22.6
-avg_accretion_rates2 <- (run_store2[,80] - init_elev) / 80
-avg_acc_rate_ci2 <- quantile(avg_accretion_rates2, c(0.025, 0.5, 0.975))
-avg_acc_rate_ci2[3]/avg_acc_rate_ci2[1] # 56% increase
+avg_accretion_rates_agb_only <- (run_store_agb_only[,80] - init_elev) / 80
+avg_acc_rate_ci_agb_only <- quantile(avg_accretion_rates_agb_only, c(0.25, 0.5, 0.75))
+avg_acc_rate_ci_agb_only[3]/avg_acc_rate_ci_agb_only[1] # 23% increase
 
 # Calculate CIs around carbon accumulation rate
-avg_C_accum_rate2 <- (carbon_store2[,80] - carbon_store2[,1]) / 80
-avg_C_accum_rate_ci2 <- quantile(avg_C_accum_rate2, c(0.025, 0.5, 0.975))
-avg_C_accum_rate_ci2[3]/avg_C_accum_rate_ci2[1] # 76.9% increase 
+avg_C_accum_rate_agb_only <- (carbon_store_agb_only[,80] - carbon_store_agb_only[,1]) / 80
+avg_C_accum_rate_ci_agb_only <- quantile(avg_C_accum_rate_agb_only, c(0.25, 0.5, 0.75))
+avg_C_accum_rate_ci_agb_only[3]/avg_C_accum_rate_ci_agb_only[1] # 29% increase 
 
-## Allow just agb to vary - vary due to cohort ####
-run_store_cohort2 <- matrix(NA, nrow = 4, ncol = 100)
-carbon_store_cohort2 <- matrix(NA, nrow = 4, ncol = 100)
-flood_store_cohort2 <- matrix(NA, nrow = 4, ncol = 100)
+# Allow just agb to vary - vary due to cohort 
+run_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
+carbon_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
 
 # For root:shoot and rooting depth, take means across cohorts
 for (i in 1:4){
   mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
-                          lunarNodalAmp=0, bMax = biomass_cohort_forMEM[i], 
-                          zVegMin=BlueGenes_Params_forsim$zVegMin, zVegMax=BlueGenes_Params_forsim$zVegMax, zVegPeak=NA,
+                          lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
+                          zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = mean(root_shoot_cohort_forMEM),
                           rootTurnover=0.5, rootDepthMax=mean(rooting_depth), omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
-  run_store_cohort2[i,] <- mem_out$annualTimeSteps$surfaceElevation
-  
-  flood_store_cohort2[i,] <- mem_out$annualTimeSteps$meanHighWater - mem_out$annualTimeSteps$surfaceElevation
+  run_store_cohort_agb_only[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
   mem_out$cohorts %>% 
     mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
            perc_C = 0.4*loi + 0.0025*loi^2,
            layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
     group_by(year) %>% 
-    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store_cohort2[i,]
+    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store_cohort_agb_only[i,]
   print(i)
 }
 
 # Quick plot
 par(mar = c(4,4,2,2))
-plot(run_store_cohort2[1,1:80], type = "n", ylim = c(22.6,30), xlab = "time forward (years)",
+plot(run_store_cohort_agb_only[1,1:80], type = "n", ylim = c(22.6,30), xlab = "time forward (years)",
      ylab = "marsh elevation (cm)")
 for(i in 1:4){
-  lines(run_store_cohort2[i,1:80], col = c(colors[1], colors[4], colors[1], colors[4])[i])
+  lines(run_store_cohort_agb_only[i,1:80], col = c(colors[1], colors[4], colors[1], colors[4])[i])
+  points(run_store_cohort_agb_only[i,1:80], pch = c(16, 16, 17, 17)[i],
+         col = c(colors[1], colors[4], colors[1], colors[4])[i])
 }
 
-# Calculate CIs around average accretion rate
+# Calculate average accretion rate
 init_elev <- 22.6
-avg_accretion_rates_cohort2 <- (run_store_cohort2[,80] - init_elev) / 80
-avg_accretion_rates_cohort2[2]/avg_accretion_rates_cohort2[3] # 19.7% increase in accretion rate from lowest to highest
+avg_accretion_rates_cohort_agb_only <- (run_store_cohort_agb_only[,80] - init_elev) / 80
 
-# Calculate CIs around carbon accumulation rate
-avg_C_accum_rate_cohort2 <- (carbon_store_cohort2[,80] - carbon_store_cohort2[,1]) / 80
-avg_C_accum_rate_cohort2[2]/avg_C_accum_rate_cohort2[3] # 26.0% increase in carbon accumulation rate from lowest to highest
+# Calculate average carbon accumulation rate
+avg_C_accum_rate_cohort_agb_only <- (carbon_store_cohort_agb_only[,80] - carbon_store_cohort_agb_only[,1]) / 80
 
+# Bring together information into a data frame
 tibble(location = c("corn", "sellman", "corn", "sellman"),
        age = c("ancestral", "ancestral", "modern", "modern"),
-       acc_v = avg_accretion_rates_cohort2 * 10,
-       acc_C = avg_C_accum_rate_cohort2 * 1e-6 / 1e-8) -> cohort_summary
+       acc_v = avg_accretion_rates_cohort_agb_only * 10,
+       acc_C = avg_C_accum_rate_cohort_agb_only * 1e-6 / 1e-8) -> cohort_summary_agb_only
 
-elevation_store_df2 <- as.data.frame(run_store2)
-elevation_store_withcohorts2 <- rbind(elevation_store_df2[,1:80], run_store_cohort2[,1:80])
-colnames(elevation_store_withcohorts2) <- 1:80
+# Store together with the genotype simulations 
+elevation_store_df_agb_only <- as.data.frame(run_store_agb_only)
+elevation_store_withcohorts_agb_only <- rbind(elevation_store_df_agb_only[,1:80], run_store_cohort_agb_only[,1:80])
+colnames(elevation_store_withcohorts_agb_only) <- 2021:2100
 
-tibble(elevation_store_withcohorts2) %>% 
-  mutate(iteration = 1:104) %>% 
-  gather(key = year, value = value, `1`:`80`) %>% 
-  mutate(year = as.numeric(year) + 2020) %>% 
-  mutate(color_code = case_when(iteration == 101 ~ 1,
-                                iteration == 102 ~ 2,
-                                iteration == 103 ~ 3,
-                                iteration == 104 ~ 4,
-                                T ~ 0),
-         size_code = case_when(iteration > 100 ~ "big",
-                               T ~ "small")) %>% 
-  ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) + 
-  geom_line(aes(alpha = size_code)) +
-  ylab("marsh elevation (cm NAVD88)") +
-  scale_color_manual(values = c("gray67", colors[1], colors[4], colors[1], colors[4])) +
-  scale_size_manual(values = c(1.5,0.8)) +
-  scale_alpha_manual(values = c(0.8, 0.2)) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[1,80]), color = colors[1], size = 3) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[2,80]), color = colors[4], size = 3,) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[3,80]), color = colors[1], size = 3, shape = 17) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[4,80]), color = colors[4], size = 3, shape = 17) +
-  theme(legend.position = "none") +
-  ylim(22,33.5)-> Fig4_panelD
+# Reformat data into long format
+tibble(elevation_store_withcohorts_agb_only) %>% 
+  mutate(iteration = as.character(1:nrow(elevation_store_withcohorts_agb_only))) %>% 
+  gather(key = year, value = value, `2021`:`2100`) %>% 
+  mutate(iteration = case_when(iteration == "1001" ~ "corn-ancestral",
+                               iteration == "1002" ~ "sellman-ancestral",
+                               iteration == "1003" ~ "corn-modern",
+                               iteration == "1004" ~ "sellman-modern",
+                               T ~ iteration))  -> CMEM_predictions_agb_only
 
-## Last panel -- compare variation for agb + bgb and abg only models ####
-
-quantile_agb_only <- quantile(run_store2[,80], c(0.025, 0.975))
-quantile_agb_bgb <- quantile(run_store1[,80], c(0.025, 0.975))
-
-tibble(y = c(run_store2[,80], run_store1[,80]),
-       x = rep(c("agb only", "agb + bgb"), each = length(run_store1[,80]))) %>% 
-  ggplot(aes(x = x, y = y, fill = x)) +
-  geom_violin(draw_quantiles = c(0.025,0.5, 0.975), size = 0.5, alpha = 0.4) +
-  scale_fill_manual(values = c("gray11", "gray67")) +
-  theme(legend.position = "none") +
-  ylab("elevation at t = 80 (cm NAVD88)") +
-  xlab("scenario") -> Fig4_panelE
-
-## Bring all plots together ####
-Fig4_panelsDE <- cowplot::plot_grid(Fig4_panelD, Fig4_panelE, nrow = 1,
-                                    labels = c("d", "e"), rel_widths = c(3,2))
-Fig4_panelsABC <- cowplot::plot_grid(Fig4_panelA_label, Fig4_panelsBC, rel_widths = c(3,2))
-
-Fig4_panelsABCDE <- cowplot::plot_grid(Fig4_panelsABC, Fig4_panelsDE, nrow = 2)
-
-png("chp1/plots/MS_plots/Vahsen_Fig4.png", height = 6.8, width = 8, units = "in", res = 300)
-Fig4_panelsABCDE
-dev.off()
+# Save output from both simulations for plotting later
+write_rds(CMEM_predictions_belowground, here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))
+write_rds(CMEM_predictions_agb_only, here("outputs/CMEM_runs", "CMEM_predictions_agb_only.rds"))
