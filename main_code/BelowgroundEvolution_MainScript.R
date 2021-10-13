@@ -683,6 +683,13 @@ avg_C_accum_rate_ci <- quantile(avg_C_accum_rate, c(0.25, 0.5, 0.75))
 # 0.001908980 0.002413024 0.002916869 
 avg_C_accum_rate_ci[3]/avg_C_accum_rate_ci[1] # 53% increase
 
+# Create a data frame of average accretion rates and carbon accumulation rates
+# from these simulations for plotting later.
+avg_rates <- tibble(avg_acc = avg_accretion_rates,
+                    avg_C = avg_C_accum_rate)
+
+write_rds(avg_rates, here("outputs/CMEM_runs", "CMEM_rates_full.rds"))
+
 ##
 # All variation - vary by cohort mean 
 ##
@@ -768,6 +775,8 @@ tibble(location = c("corn", "sellman", "corn", "sellman"),
        acc_v = avg_accretion_rates_cohort * 10,
        acc_C = avg_C_accum_rate_cohort * 1e-6 / 1e-8) -> cohort_summary
 
+write_rds(cohort_summary, here("outputs/CMEM_runs", "CMEM_rates_full_cohort.rds"))
+
 # Join together data frame of simulations based on genotypic variation and
 # cohort simulations
 elevation_store_df <- as.data.frame(run_store)
@@ -818,7 +827,6 @@ mean(cohort_summary$acc_C[c(1,3)]) / mean(cohort_summary$acc_C[c(2,4)])
 (mean(cohort_summary$acc_C[c(1,2)]) - mean(cohort_summary$acc_C[c(3,4)])) / mean(cohort_summary$acc_C[c(1,2)])
 # Increase in carbon accumulation rate from modern to ancestral
 mean(cohort_summary$acc_C[c(1,2)]) / mean(cohort_summary$acc_C[c(3,4)])
-
 
 
 ## Cohort Marsh Equilibrium Model Simulations - AGB varies only ####

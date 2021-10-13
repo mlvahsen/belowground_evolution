@@ -1,93 +1,177 @@
 # Belowground evolution Figure 4
 
-#   mutate(year = as.numeric(year) + 2020) %>% 
-#   mutate(color_code = case_when(iteration == 101 ~ 1,
-#                                 iteration == 102 ~ 2,
-#                                 iteration == 103 ~ 3,
-#                                 iteration == 104 ~ 4,
-#                                 T ~ 0),
-#          size_code = case_when(iteration > 100 ~ "big",
-#                                T ~ "small")) %>% 
-#   ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) + 
-#   geom_line(aes(alpha = size_code)) +
-#   ylab("marsh elevation (cm NAVD88)") +
-#   scale_color_manual(values = c("gray11", colors[1], colors[4], colors[1], colors[4])) +
-#   scale_size_manual(values = c(1.5,0.8)) +
-#   scale_alpha_manual(values = c(0.8, 0.2)) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[1,80]), color = colors[1], size = 3) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[2,80]), color = colors[4], size = 3) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[3,80]), color = colors[1], size = 3, shape = 17) +
-#   geom_point(aes(x = 2100, y = run_store_cohort[4,80]), color = colors[4], size = 3, shape = 17) +
-#   theme(legend.position = "none") +
-#   ylim(22,33.5)-> Fig4_panelA
-# 
-# tibble(acc_rate = avg_accretion_rates1*10) %>% 
-#   ggplot(aes(x = acc_rate)) +
-#   geom_histogram(bins=10, color = "black", fill = "white") +
-#   xlab(expression(paste("vertical accretion rate (mm ",yr^-1,")"))) +
-#   geom_point(aes(x = cohort_summary$acc_v[1], y = 0), color = colors[1], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_v[2], y = 0), color = colors[4], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_v[3], y = 0), color = colors[1], size = 3, shape = 17)+
-#   geom_point(aes(x = cohort_summary$acc_v[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelB
-# 
-# tibble(acc_rate = avg_C_accum_rate * 1e-6 / 1e-8) %>% 
-#   ggplot(aes(x = acc_rate)) +
-#   geom_histogram(bins = 10, fill = "white", color = "black") +
-#   xlab(expression(paste("carbon accumulation rate (t C ", ha^-1, yr^-1,")"))) +
-#   geom_point(aes(x = cohort_summary$acc_C[1], y = 0), color = colors[1], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_C[2], y = 0), color = colors[4], size = 3) +
-#   geom_point(aes(x = cohort_summary$acc_C[3], y = 0), color = colors[1], size = 3, shape = 17) +
-#   geom_point(aes(x = cohort_summary$acc_C[4], y = 0), color = colors[4], size = 3, shape = 17) -> Fig4_panelC 
-# 
-# Fig4_panelsBC <- cowplot::plot_grid(Fig4_panelB, Fig4_panelC, nrow = 2, labels = c("b", "c"))
-# Fig4_panelA_label <- cowplot::plot_grid(Fig4_panelA, labels = "a")
+# Figure caption: Within-species variation in S. americanus functional traits
+# has significant consequences for wetland ecosystem structure and function. (A)
+# Using a previously published model, the Cohort Marsh Equilibrium Model (CMEM;
+# Morris et al. 2002, Vahsen et al. in prep), we simulated marsh elevation gain
+# 80 years into the future to the year 2100. Light grey lines represent model
+# simulations (n = 1000) that account for variation due to genotype in
+# aboveground biomass, root-shoot-ratio, and maximum rooting depth. Green and
+# pink lines represent mean predictions for ecotypes from Corn Island (green)
+# and Sellman Creek (pink), respectively, while shapes at year = 2100 represent
+# age cohorts (circle = modern, triangle = ancestral). (B) Average vertical
+# accretion rate across 80 years explained by variation in traits due to
+# genotype (histogram) and due to average ecotype and age cohort trait values
+# (points). (C) Average carbon accumulation rate across 80 years explained by
+# variation in traits due to genotype (histogram) and due to average ecotype and
+# age cohort trait values (points). (D) Simulations of CMEM that account for
+# variation in aboveground biomass due to genotype (grey lines), ecotype (green
+# vs. pink), and age cohort (circle vs. triangle). (E) Distribution of final
+# predicted elevation of CMEM simulations for scenarios in which aboveground and
+# belowground traits were varied (left; from A) and for which only aboveground
+# biomass was varied (right; from D).
 
+## Preliminaries ####
 
-tibble(elevation_store_withcohorts2) %>% 
-  mutate(iteration = 1:104) %>% 
-  gather(key = year, value = value, `1`:`80`) %>% 
-  mutate(year = as.numeric(year) + 2020) %>% 
-  mutate(color_code = case_when(iteration == 101 ~ 1,
-                                iteration == 102 ~ 2,
-                                iteration == 103 ~ 3,
-                                iteration == 104 ~ 4,
+# Load libraries
+library(tidyverse); library(cowplot)
+
+# Read in outputs from CMEM runs where agb, r:s, and rooting depth were
+# manipulated
+cmem_full <- read_rds(here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))
+# Read in outputs from CMEM runs where only agb was manipulated
+cmem_agb <- read_rds(here("outputs/CMEM_runs", "CMEM_predictions_agb_only.rds"))
+# Read in average accretion and C accumulation rates from full model
+cmem_rates <- read_rds(here("outputs/CMEM_runs", "CMEM_rates_full.rds"))
+# Read in average accretion and C accumulation rates from full model by cohort
+cmem_rates_cohort <- read_rds(here("outputs/CMEM_runs", "CMEM_rates_full_cohort.rds"))
+
+## Figure 4a ####
+
+# Collect elevation values for each age-location cohort at the last year of the
+# simulation
+cmem_full %>% 
+  filter(iteration %in% c("corn-ancestral", "sellman-ancestral",
+                          "corn-modern", "sellman-modern") & year == "2100") %>% 
+  pull(value) -> end_points
+
+cmem_full %>% 
+  mutate(year = as.numeric(year)) %>%
+  mutate(color_code = case_when(iteration == "corn-ancestral" ~ 1,
+                                iteration == "sellman-ancestral" ~ 2,
+                                iteration == "corn-modern" ~ 3,
+                                iteration == "sellman-modern" ~ 4,
                                 T ~ 0),
-         size_code = case_when(iteration > 100 ~ "big",
-                               T ~ "small")) %>% 
-  ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) + 
+         size_code = case_when(iteration %in% c("corn-ancestral", "sellman-ancestral",
+                                                "corn-modern", "sellman-modern") ~ "big",
+                               T ~ "small")) %>%
+  ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) +
   geom_line(aes(alpha = size_code)) +
   ylab("marsh elevation (cm NAVD88)") +
-  scale_color_manual(values = c("gray67", colors[1], colors[4], colors[1], colors[4])) +
-  scale_size_manual(values = c(1.5,0.8)) +
-  scale_alpha_manual(values = c(0.8, 0.2)) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[1,80]), color = colors[1], size = 3) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[2,80]), color = colors[4], size = 3,) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[3,80]), color = colors[1], size = 3, shape = 17) +
-  geom_point(aes(x = 2100, y = run_store_cohort2[4,80]), color = colors[4], size = 3, shape = 17) +
+  scale_color_manual(values = c("gray11", colors[1], colors[4], colors[1], colors[4])) +
+  scale_size_manual(values = c(1.5, 0.8)) +
+  scale_alpha_manual(values = c(0.8, 0.1)) +
+  geom_point(aes(x = 2100, y = end_points[1]), color = colors[1], size = 3) +
+  geom_point(aes(x = 2100, y = end_points[2]), color = colors[4], size = 3) +
+  geom_point(aes(x = 2100, y = end_points[3]), color = colors[1], size = 3, shape = 17) +
+  geom_point(aes(x = 2100, y = end_points[4]), color = colors[4], size = 3, shape = 17) +
+  theme_bw() +
   theme(legend.position = "none") +
-  ylim(22,33.5)-> Fig4_panelD
+  ylim(22,36) -> Fig4_panelA
 
-## Last panel -- compare variation for agb + bgb and abg only models ####
+## Figure 4b ####
+tibble(acc_rate = cmem_rates$avg_acc*10) %>%
+  ggplot(aes(x = acc_rate)) +
+  geom_histogram(bins=10, color = "gray27", fill = "white") +
+  xlab(expression(paste("vertical accretion rate (mm ",yr^-1,")"))) +
+  geom_point(aes(x = cmem_rates_cohort$acc_v[1], y = 0), color = colors[1], size = 3) +
+  geom_point(aes(x = cmem_rates_cohort$acc_v[2], y = 0), color = colors[4], size = 3) +
+  geom_point(aes(x = cmem_rates_cohort$acc_v[3], y = 0), color = colors[1], size = 3, shape = 17)+
+  geom_point(aes(x = cmem_rates_cohort$acc_v[4], y = 0), color = colors[4], size = 3, shape = 17)+
+  geom_segment(aes(x = cmem_rates_cohort$acc_v[1], y = 0, xend = cmem_rates_cohort$acc_v[1], yend = Inf),
+               color = colors[1], size = 1.5, linetype = "dotted") +
+  geom_segment(aes(x = cmem_rates_cohort$acc_v[2], y = 0, xend = cmem_rates_cohort$acc_v[2], yend = Inf),
+               color = colors[4], size = 1.5, linetype = "dotted") + 
+  geom_segment(aes(x = cmem_rates_cohort$acc_v[3], y = 0, xend = cmem_rates_cohort$acc_v[3], yend = Inf),
+               color = colors[1], size = 1.5, linetype = "dotted") +
+  geom_segment(aes(x = cmem_rates_cohort$acc_v[4], y = 0, xend = cmem_rates_cohort$acc_v[4], yend = Inf),
+               color = colors[4], size = 1.5, linetype = "dotted") +
+  theme_bw() +
+  ylab("count") -> Fig4_panelB
 
-quantile_agb_only <- quantile(run_store2[,80], c(0.025, 0.975))
-quantile_agb_bgb <- quantile(run_store1[,80], c(0.025, 0.975))
+## Figure 4c ####
 
-tibble(y = c(run_store2[,80], run_store1[,80]),
-       x = rep(c("agb only", "agb + bgb"), each = length(run_store1[,80]))) %>% 
+tibble(acc_rate = cmem_rates$avg_C * 1e-6 / 1e-8) %>%
+  ggplot(aes(x = acc_rate)) +
+  geom_histogram(bins=10, color = "gray27", fill = "white") +
+  xlab(expression(paste("carbon accumulation rate (t C ", ha^-1, yr^-1,")"))) +
+  geom_point(aes(x = cmem_rates_cohort$acc_C[1], y = 0), color = colors[1], size = 3) +
+  geom_point(aes(x = cmem_rates_cohort$acc_C[2], y = 0), color = colors[4], size = 3) +
+  geom_point(aes(x = cmem_rates_cohort$acc_C[3], y = 0), color = colors[1], size = 3, shape = 17)+
+  geom_point(aes(x = cmem_rates_cohort$acc_C[4], y = 0), color = colors[4], size = 3, shape = 17)+
+  geom_segment(aes(x = cmem_rates_cohort$acc_C[1], y = 0, xend = cmem_rates_cohort$acc_C[1], yend = Inf),
+               color = colors[1], size = 1.5, linetype = "dotted") +
+  geom_segment(aes(x = cmem_rates_cohort$acc_C[2], y = 0, xend = cmem_rates_cohort$acc_C[2], yend = Inf),
+               color = colors[4], size = 1.5, linetype = "dotted") + 
+  geom_segment(aes(x = cmem_rates_cohort$acc_C[3], y = 0, xend = cmem_rates_cohort$acc_C[3], yend = Inf),
+               color = colors[1], size = 1.5, linetype = "dotted") +
+  geom_segment(aes(x = cmem_rates_cohort$acc_C[4], y = 0, xend = cmem_rates_cohort$acc_C[4], yend = Inf),
+               color = colors[4], size = 1.5, linetype = "dotted") +
+  theme_bw() +
+  ylab("count") -> Fig4_panelC
+
+## Figure 4d - surface elevation predictions for AGB only simulation ####
+
+# Collect elevation values for each age-location cohort at the last year of the
+# simulation
+cmem_agb %>% 
+  filter(iteration %in% c("corn-ancestral", "sellman-ancestral",
+                          "corn-modern", "sellman-modern") & year == "2100") %>% 
+  pull(value) -> end_points_agb
+
+cmem_agb %>% 
+  mutate(year = as.numeric(year)) %>%
+  mutate(color_code = case_when(iteration == "corn-ancestral" ~ 1,
+                                iteration == "sellman-ancestral" ~ 2,
+                                iteration == "corn-modern" ~ 3,
+                                iteration == "sellman-modern" ~ 4,
+                                T ~ 0),
+         size_code = case_when(iteration %in% c("corn-ancestral", "sellman-ancestral",
+                                                "corn-modern", "sellman-modern") ~ "big",
+                               T ~ "small")) %>%
+  ggplot(aes(x = year, y = value, group = iteration, color = factor(color_code), size = factor(size_code))) +
+  geom_line(aes(alpha = size_code)) +
+  ylab("marsh elevation (cm NAVD88)") +
+  scale_color_manual(values = c("gray11", colors[1], colors[4], colors[1], colors[4])) +
+  scale_size_manual(values = c(1.5, 0.8)) +
+  scale_alpha_manual(values = c(0.8, 0.1)) +
+  geom_point(aes(x = 2100, y = end_points_agb[1]), color = colors[1], size = 3) +
+  geom_point(aes(x = 2100, y = end_points_agb[2]), color = colors[4], size = 3) +
+  geom_point(aes(x = 2100, y = end_points_agb[3]), color = colors[1], size = 3, shape = 17) +
+  geom_point(aes(x = 2100, y = end_points_agb[4]), color = colors[4], size = 3, shape = 17) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  ylim(22,36) -> Fig4_panelD
+
+
+## Figure 4e - compare variation for agb + bgb and abg only models ####
+
+cmem_full %>% 
+  filter(year == "2100") %>% 
+  pull(value) -> surface_elevation_2100_full
+
+cmem_agb %>% 
+  filter(year == "2100") %>% 
+  pull(value) -> surface_elevation_2100_agb
+
+tibble(y = c(surface_elevation_2100_agb, surface_elevation_2100_full),
+       x = rep(c("agb only", "agb + bgb"), each = length(surface_elevation_2100_agb))) %>% 
   ggplot(aes(x = x, y = y, fill = x)) +
   geom_violin(draw_quantiles = c(0.025,0.5, 0.975), size = 0.5, alpha = 0.4) +
   scale_fill_manual(values = c("gray11", "gray67")) +
+  theme_bw() +
   theme(legend.position = "none") +
-  ylab("elevation at t = 80 (cm NAVD88)") +
-  xlab("scenario") -> Fig4_panelE
+  ylab("elevation in year 2100 (cm NAVD88)") +
+  xlab("scenario")-> Fig4_panelE
 
 ## Bring all plots together ####
-Fig4_panelsDE <- cowplot::plot_grid(Fig4_panelD, Fig4_panelE, nrow = 1,
+Fig4_panelsBC <- plot_grid(Fig4_panelB, Fig4_panelC, nrow = 2, labels = c("b", "c"))
+Fig4_panelA_label <- plot_grid(Fig4_panelA, labels = "a")
+Fig4_panelsDE <- plot_grid(Fig4_panelD, Fig4_panelE, nrow = 1,
                                     labels = c("d", "e"), rel_widths = c(3,2))
-Fig4_panelsABC <- cowplot::plot_grid(Fig4_panelA_label, Fig4_panelsBC, rel_widths = c(3,2))
+Fig4_panelsABC <- plot_grid(Fig4_panelA_label, Fig4_panelsBC, rel_widths = c(3,2))
+Fig4_panelsABCDE <- plot_grid(Fig4_panelsABC, Fig4_panelsDE, nrow = 2)
 
-Fig4_panelsABCDE <- cowplot::plot_grid(Fig4_panelsABC, Fig4_panelsDE, nrow = 2)
-
-png("chp1/plots/MS_plots/Vahsen_Fig4.png", height = 6.8, width = 8, units = "in", res = 300)
+png(here("figs_tables", "Figure4"), height = 6.8, width = 8, units = "in", res = 300)
 Fig4_panelsABCDE
 dev.off()
