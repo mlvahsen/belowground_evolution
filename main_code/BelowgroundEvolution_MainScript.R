@@ -7,7 +7,6 @@
 library(tidyverse); library(ggmcmc); library(rjags); library(lme4)
 library(here); library(rCTM); library(mvtnorm); library(emmeans)
 
-
 ## Read in data ####
 
 # Source in initial conditions (genotypes and wet weights)
@@ -23,10 +22,8 @@ all_traits %>%
 mono_traits <- all_traits %>% 
   filter(diversity == "mono")
 
-
 ## Source JAGS functions to fit (generalized) linear mixed models ####
 source("main_code/jags_fxns.R")
-
 
 
 ## Create a model template that JAGS will use the model matrix for ####
@@ -34,12 +31,10 @@ model_template_mono <- lmer(agb ~ ln_depth + ic_weight + frame +
                          (1|genotype), data = mono_traits)
 
 
-
 ## Set MCMC specifications ####
 n.iter <- 10000
 n.adapt <- 1000
 thin <- 3
-
 
 
 ## Fit all basic trait models ####
@@ -69,7 +64,6 @@ saveRDS(width_out, here("outputs/monoculture_models", "width_monomodel.rds"))
 saveRDS(height_out, here("outputs/monoculture_models", "height_monomodel.rds"))
 saveRDS(density_out, here("outputs/monoculture_models", "density_monomodel.rds"))
 saveRDS(beta_out, here("outputs/monoculture_models", "beta_monomodel.rds"))
-
 
 
 ## Fit all trait models for age + provenance additive effects ####
