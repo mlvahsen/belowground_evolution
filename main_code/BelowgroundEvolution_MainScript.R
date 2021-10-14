@@ -419,14 +419,14 @@ mean_difference_bypot <- function(trait, additive_samples){
   
   # Create matrix to hold differences between observed and predicted for each pot
   # at each iteration
-  difference <- matrix(0, nrow = 6666, ncol = 48)
+  difference <- matrix(0, nrow = nrow(additive_samples$MonoPredict), ncol = ncol(additive_samples$MonoPredict))
   
   if(trait == "density"){
-    for (i in 1:6666){
+    for (i in 1:nrow(additive_samples$MonoPredict)){
       difference[i,] <- log(observed) - additive_samples$MonoPredict[i,]
     }
   }else{
-    for (i in 1:6666){
+    for (i in 1:nrow(additive_samples$MonoPredict)){
       difference[i,] <- observed - additive_samples$MonoPredict[i,]
     }
   }

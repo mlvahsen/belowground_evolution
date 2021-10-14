@@ -273,12 +273,12 @@ cs_traits %>%
 
 ggdraw() +
   draw_plot(b_main) +
-  draw_plot(b_inset, x = 0.35, y = 0.15, width = 0.6, height = 0.4) -> fig2_beta_updated
+  draw_plot(b_inset, x = 0.35, y = 0.15, width = 0.6, height = 0.4) -> fig3_beta_updated
 
 
 ## Bring plots together ####
 png(here("figs_tables", "Figure3.png"), height = 5.5, width = 11, res = 300, units = "in")
-plot_grid(stack_plot, fig2_beta_updated, labels = "auto", rel_widths = c(2,2))
+plot_grid(stack_plot, fig3_beta_updated, labels = "auto", rel_widths = c(2,2))
 dev.off()
 
 ## For in-text ####
