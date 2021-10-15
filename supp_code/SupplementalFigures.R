@@ -27,6 +27,14 @@ colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
 mono_traits <- all_traits %>% 
   filter(diversity == "mono")
 
+# Read in all monoculture trait models
+agb_out <- read_rds(here("outputs/monoculture_models", "agb_monomodel.rds"))
+bgb_out <- read_rds(here("outputs/monoculture_models", "bgb_monomodel.rds"))
+rs_out <- read_rds(here("outputs/monoculture_models", "rs_monomodel.rds"))
+height_out <- read_rds(here("outputs/monoculture_models", "height_monomodel.rds"))
+width_out <- read_rds(here("outputs/monoculture_models", "width_monomodel.rds"))
+density_out <- read_rds(here("outputs/monoculture_models", "density_monomodel.rds"))
+beta_out <- read_rds(here("outputs/monoculture_models", "beta_monomodel.rds"))
 
 ## Figure S1: map of core locations ####
 
@@ -126,9 +134,230 @@ png(here("figs_tables", "FigS2_SeedAges.png"), height = 3.5, width = 3.5,
 FigS2
 dev.off()
 
-## Figure S3: all traits by cohort with raw data ####
-tibble(cohort = mono_traits$age,
-       provenance = mono_traits$location,
+## Figure S3: random intercepts of monoculture models ####
+colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
+
+mono_traits %>% 
+  rename(`age cohort` = age,
+         provenance = location) -> mono_traits
+
+# Calculate ICCs
+get_icc <- function(coda_object){
+  ggs(coda_object, family = "sigma") %>% 
+    spread(key = Parameter, value = value) %>% 
+    mutate(icc = sigma.int^2 / (sigma.int^2 + sigma.res^2)) %>% 
+    summarize(mean = sprintf('%.1f', mean(icc)*100),
+              lower.95 = sprintf('%.1f', quantile(icc, 0.025)*100),
+              upper.95 = sprintf('%.1f', quantile(icc, 0.975)*100)) -> icc_summary
+  return(icc_summary)
+}
+get_icc_pois <- function(coda_object){
+  ggs(coda_object) %>% 
+    spread(key = Parameter, value = value) %>%
+    mutate(sigma2_d = log(1 + 1/mean(mono_traits$density))) %>% 
+    mutate(icc = sigma.int^2 / (sigma.int^2 + sigma2_d)) %>% 
+    summarize(mean = sprintf('%.1f', mean(icc)*100),
+              lower.95 = sprintf('%.1f', quantile(icc, 0.025)*100),
+              upper.95 = sprintf('%.1f', quantile(icc, 0.975)*100)) -> icc_summary_density
+  return(icc_summary_density)
+}
+
+# Plotting function
+make_fig1_panel <- function(data, coda_object, trait, label_y, legend, xlab){
+  data %>% 
+    mutate(genotype_name = genotype) %>% 
+    mutate(genotype_code = as.numeric(as.factor(genotype))) %>% 
+    group_by(genotype_code, genotype_name, provenance, `age cohort`) %>% 
+    dplyr::summarize(n = length(`age cohort`)) %>% 
+    mutate(Parameter = paste("alpha[", genotype_code, "]", sep = "")) %>% 
+    mutate(Coefficient = "Intercept") %>% 
+    mutate(Label = genotype_name) -> labels
+  
+  merge(ggs(coda_object) %>% filter(substr(Parameter, 1, 5) == "alpha"),
+        labels, by.x = "Parameter") -> out
+  
+  out %>% 
+    mutate(new_Label = case_when(Label == "C1BL" ~ "ca1",
+                                 Label == "C1BN" ~ "ca2",
+                                 Label == "C2BL" ~ "ca3",
+                                 Label == "C2BM" ~ "ca4",
+                                 Label == "C4BM" ~ "ca5",
+                                 Label == "S1CDI" ~ "sa1",
+                                 Label == "S1CSJ" ~ "sa2",
+                                 Label == "S1CSK" ~ "sa3",
+                                 Label == "C1BP" ~ "cm1",
+                                 Label == "C1BR" ~ "cm2",
+                                 Label == "C2BT" ~ "cm3",
+                                 Label == "C3AS" ~ "cm4",
+                                 Label == "S1ADN" ~ "sm1",
+                                 Label == "S1CDP" ~ "sm2",
+                                 Label == "H1A1P" ~ "hm1",
+                                 Label == "KM1B2P" ~ "km1")) -> out
+  
+  out$new_Label <- factor(out$new_Label , levels=c("ca1", "ca2", "ca3", "ca4","ca5",
+                                                   "sa1", "sa2", "sa3",
+                                                   "cm1", "cm2", "cm3", "cm4",
+                                                   "sm1", "sm2", "hm1", "km1"))
+  
+  if(trait == "stem density"){
+    out %>% 
+      mutate(value = exp(value)) -> out
+  }
+  
+  # Get mean value to plot as hline
+  ggs(coda_object) %>% 
+    filter(Parameter == "mu.alpha") %>% 
+    summarise(mean = mean(value)) %>% pull(mean) -> mean_value
+  
+  if(trait == "stem density"){
+    mean_value <- exp(mean_value)
+  }
+  
+  if(trait == "stem density"){
+    icc <- get_icc_pois(coda_object)
+  }else{
+    icc <- get_icc(coda_object)
+  }
+  
+  
+  
+  ggplot(out) +
+    geom_pointrange(mapping = aes(x = new_Label, y = value, color = provenance, shape = `age cohort`),
+                    stat = "summary",
+                    fun.min = function(z) {quantile(z,0.025)},
+                    fun.max = function(z) {quantile(z,0.975)},
+                    fun = mean,
+                    size = 0.8) +
+    geom_vline(aes(xintercept = 8.5)) +
+    geom_hline(aes(yintercept = mean_value), color = "gray47", linetype = "dashed") +
+    scale_color_manual(values = c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")) +
+    xlab("genotype") + ylab(trait) +
+    theme_bw() +
+    theme(legend.position = legend, legend.box = "vertical",
+          legend.title=element_text(size=14, face = "bold"), 
+          legend.text=element_text(size=12)) + 
+    xlab(xlab) +
+    annotate("text", x = 13.5, y = label_y, label = paste("ICC = ", icc$mean, " (",
+                                                             icc$lower.95, ",", icc$upper.95, ")", sep = "")) 
+    
+  
+  
+  
+  
+}
+
+# Make plots
+fig1_bgb <- make_fig1_panel(mono_traits, bgb_out, "belowground biomass (g)", 9.5, "top", "")
+fig1_agb <- make_fig1_panel(mono_traits, agb_out, "aboveground biomass (g)", 10, "none", "")
+fig1_density <- make_fig1_panel(mono_traits, density_out, "stem density", 55, "none", "")
+fig1_width <- make_fig1_panel(mono_traits, width_out, "mean stem width (mm)", 3.4, "none", "")
+fig1_height <- make_fig1_panel(mono_traits, height_out, "mean stem height (cm)", 47.5, "none", "")
+fig1_rs <- make_fig1_panel(mono_traits, rs_out, "root:shoot ratio", 1.0, "none", "genotype")
+fig1_beta <- make_fig1_panel(mono_traits, beta_out, trait = "root distribution parameter", 0.93, "none", "genotype")
+
+# Pull out legend
+legend <- get_legend(fig1_bgb)
+fig1_bgb_nolegend <- fig1_bgb + theme(legend.position = "none")
+
+# Put together LHS
+left_panel <- cowplot::plot_grid(fig1_agb, 
+                                 fig1_density, 
+                                 fig1_height,
+                                 fig1_width, nrow = 4,
+                                 labels = c("a", "c", "e", "g"),
+                                 label_x = 0.12, align = "v")
+
+# Put together RHS except legend
+right_panela <- cowplot::plot_grid(fig1_bgb_nolegend, 
+                                   fig1_rs, 
+                                   fig1_beta,
+                                   nrow = 3,
+                                   labels = c("b", "d", "f"),
+                                   label_x = 0.12, align = "v")
+
+# Add legend to RHS
+right_panel<- cowplot::plot_grid(right_panela, legend, nrow = 2, rel_heights = c(3,1))
+
+png(here("figs_tables", "FigS3.png"), height = 8.6, width = 10, res = 300, units = "in")
+left_panel + right_panel
+dev.off() 
+
+## Figure S4: monopoly diffs by age ####
+diffs_by_age %>%
+  gather(key = trait, value = difference, `aboveground biomass (g)`:`root distribution parameter`) %>%
+  mutate(trait = factor(trait, levels = c("aboveground biomass (g)",
+                                          "stem density",
+                                          "mean stem height (cm)",
+                                          "mean stem width (mm)",
+                                          "belowground biomass (g)",
+                                          "root:shoot ratio",
+                                          "root distribution parameter"))) %>%
+  mutate(cohort = age) %>%
+  ggplot(aes(x = cohort, y = difference, pch = cohort)) +
+  geom_boxplot(outlier.shape = NA)+
+  geom_jitter(height = 0, width = 0.2, alpha = 0.2, size = 3) +
+  facet_wrap(~trait, scales = "free_y", nrow = 2) +
+  scale_shape_manual(values = c(16,8,17)) +
+  ylab("scaled difference") + theme_classic() +
+  theme(legend.position = c(1, 0.1),
+        legend.justification = c(1.6, 0)) -> fig_S4
+
+png(here("figs_tables","FigureS4_monopoly_byAge.png"), height = 4, width = 10, units = "in", res = 300)
+fig_S4
+dev.off()
+
+# Also test for differences across age cohorts
+anova(lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`stem density` ~ age, data = diffs_by_age)) # ns
+anova(lm(`mean stem height (cm)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`mean stem width (mm)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`belowground biomass (g)` ~ age, data = diffs_by_age)) # ns
+anova(lm(`root:shoot ratio` ~ age, data = diffs_by_age)) # ns
+anova(lm(`root distribution parameter` ~ age, data = diffs_by_age)) # .
+
+## Figure S5: root-to-shoot ratio differs by provenance and cohort ####
+mono_traits %>% 
+  filter(provenance %in% c("corn", "sellman")) %>% 
+  ggplot(aes(x = provenance, y = rs)) +
+  geom_boxplot(aes(color = provenance)) +
+  geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,size = 3, alpha = 0.5) +
+  theme_classic() +
+  scale_color_manual(values = colors[c(1,4)]) +
+  ylab("root-to-shoot ratio") -> rs_location
+
+mono_traits %>% 
+  filter(provenance %in% c("corn", "sellman")) %>% 
+  ggplot(aes(x = `age cohort`, y = rs)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,size = 3, alpha = 0.5) +
+  theme_classic() +
+  scale_color_manual(values = colors[c(1,4)]) +
+  ylab("") + theme(legend.position = "none") -> rs_age
+
+png(here("figs_tables", "FigS5_rsLocAge.png"), height = 2.7, width = 5.4,
+    res = 300, units = "in")
+rs_location + rs_age + plot_layout(guides = "collect")
+dev.off()
+
+## Figure S6: stem width differs by cohort ####
+mono_traits %>% 
+  filter(provenance %in% c("corn", "sellman")) %>% 
+  ggplot(aes(x = `age cohort`, y = mean_mid_width)) +
+  geom_boxplot() +
+  geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,
+              size = 3, alpha = 0.5) +
+  theme_classic() +
+  scale_color_manual(values = colors[c(1,4)]) +
+  ylab("stem width (mm)") -> width_age
+
+png(here("figs_tables", "FigureS6_widthAge.png"), height = 2.7, width = 3.5,
+    res = 300, units = "in")
+width_age
+dev.off()
+
+## Figure S7: all traits by cohort with raw data ####
+tibble(cohort = mono_traits$`age cohort`,
+       provenance = mono_traits$provenance,
        `aboveground biomass (g)` = mono_traits$agb,
        `stem density` = mono_traits$density,
        `mean stem height (cm)` = mono_traits$mean_tot_height,
@@ -157,118 +386,27 @@ tibble(cohort = mono_traits$age,
   facet_wrap(~trait, scales = "free_y", nrow = 2) + 
   scale_color_manual(values = colors) +
   ylab("trait value") +
-  xlab("") + theme_bw() -> FigS3
+  xlab("") + theme_bw() -> FigS7
 
-png(here("figs_tables", "FigureS3_allTraitsRaw.png"), height = 4, width = 10,
+png(here("figs_tables", "FigureS7_allTraitsRaw.png"), height = 4, width = 10,
     res = 300, units = "in")
-FigS3
+FigS7
 dev.off()
 
-## Figure S4: root-to-shoot ratio differs by provenance and cohort ####
+## Figure S8: stem height differs by cohort ####
 mono_traits %>% 
-  filter(location %in% c("corn", "sellman")) %>% 
-  rename(provenance = location,
-         cohort = age) %>% 
-  ggplot(aes(x = provenance, y = rs)) +
-  geom_boxplot(aes(color = provenance)) +
-  geom_jitter(aes(color = provenance, shape = cohort), height = 0, width = 0.1,size = 3, alpha = 0.5) +
-  theme_classic() +
-  scale_color_manual(values = colors[c(1,4)]) +
-  ylab("root-to-shoot ratio") -> rs_location
-
-mono_traits %>% 
-  filter(location %in% c("corn", "sellman")) %>% 
-  rename(provenance = location,
-         cohort = age) %>% 
-  ggplot(aes(x = cohort, y = rs)) +
-  geom_boxplot() +
-  geom_jitter(aes(color = provenance, shape = cohort), height = 0, width = 0.1,size = 3, alpha = 0.5) +
-  theme_classic() +
-  scale_color_manual(values = colors[c(1,4)]) +
-  ylab("") + theme(legend.position = "none") -> rs_age
-
-png(here("figs_tables", "FigS4_rsLocAge.png"), height = 2.7, width = 5.4,
-    res = 300, units = "in")
-rs_location + rs_age + plot_layout(guides = "collect")
-dev.off()
-
-## Figure S5: stem height differs by cohort ####
-mono_traits %>% 
-  filter(location %in% c("corn", "sellman")) %>% 
-  rename(provenance = location,
-         cohort = age) %>% 
+  filter(provenance %in% c("corn", "sellman")) %>% 
   ggplot(aes(x = provenance, y = mean_tot_height)) +
   geom_boxplot(aes(color = provenance), outlier.shape = NA) +
-  geom_jitter(aes(color = provenance, shape = cohort), height = 0, width = 0.1,
+  geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,
               size = 3, alpha = 0.5) +
   theme_classic() +
   scale_color_manual(values = colors[c(1,4)]) +
   ylab("stem height (cm)") -> height_location
 
-png(here("figs_tables", "FigureS5_heightLoc.png"), height = 2.7, width = 3.5,
+png(here("figs_tables", "FigureS8_heightLoc.png"), height = 2.7, width = 3.5,
     res = 300, units = "in")
 height_location
-dev.off()
-
-## Figure S6: stem width differs by cohort ####
-mono_traits %>% 
-  filter(location %in% c("corn", "sellman")) %>% 
-  rename(provenance = location,
-         cohort = age) %>% 
-  ggplot(aes(x = cohort, y = mean_mid_width)) +
-  geom_boxplot() +
-  geom_jitter(aes(color = provenance, shape = cohort), height = 0, width = 0.1,
-              size = 3, alpha = 0.5) +
-  theme_classic() +
-  scale_color_manual(values = colors[c(1,4)]) +
-  ylab("stem width (mm)") -> width_age
-
-png(here("figs_tables", "FigureS6_widthAge.png"), height = 2.7, width = 3.5,
-    res = 300, units = "in")
-width_age
-dev.off()
-
-## Figure S7 & Table SX: monopoly diffs by age ####
-diffs_by_age %>%
-  gather(key = trait, value = difference, `aboveground biomass (g)`:`root distribution parameter`) %>%
-  mutate(trait = factor(trait, levels = c("aboveground biomass (g)",
-                                          "stem density",
-                                          "mean stem height (cm)",
-                                          "mean stem width (mm)",
-                                          "belowground biomass (g)",
-                                          "root:shoot ratio",
-                                          "root distribution parameter"))) %>%
-  mutate(cohort = age) %>%
-  ggplot(aes(x = cohort, y = difference, pch = cohort)) +
-  geom_boxplot(outlier.shape = NA)+
-  geom_jitter(height = 0, width = 0.2, alpha = 0.2, size = 3) +
-  facet_wrap(~trait, scales = "free_y", nrow = 2) +
-  scale_shape_manual(values = c(16,8,17)) +
-  ylab("scaled difference") + theme_classic() +
-  theme(legend.position = c(1, 0.1),
-        legend.justification = c(1.6, 0)) -> fig_S7
-
-png(here("figs_tables","FigureS7_monopoly_byAge.png"), height = 4, width = 10, units = "in", res = 300)
-fig_S7
-dev.off()
-
-# Also test for differences across age cohorts
-anova(lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)) # ns
-anova(lm(`stem density` ~ age, data = diffs_by_age)) # ns
-anova(lm(`mean stem height (cm)` ~ age, data = diffs_by_age)) # ns
-anova(lm(`mean stem width (mm)` ~ age, data = diffs_by_age)) # ns
-anova(lm(`belowground biomass (g)` ~ age, data = diffs_by_age)) # ns
-anova(lm(`root:shoot ratio` ~ age, data = diffs_by_age)) # ns
-anova(lm(`root distribution parameter` ~ age, data = diffs_by_age)) # .
-
-## Figure S8: trait space for MEM simulations ####
-
-for_MEM_full <- readRDS(here("outputs/CMEM_runs", "traits_for_MEM_simulations.rds"))
-
-png(here("figs_tables","FigureS8_randomdrawsMEM.png"), width = 6.7, height = 5.7,
-    res = 300, units = "in")
-ggpairs(for_MEM_full, lower = list(continuous = wrap("smooth", alpha = 0.3, size=1))) +
-  theme_bw() + ylab("trait value") + xlab("trait value")
 dev.off()
 
 ## Figure S9: Blue genes parameter values ####
@@ -337,5 +475,15 @@ blue_genes %>%
 
 png(here("figs_tables", "FigS9_BlueGenesParams.png"), height = 3.5, width = 6.5, res = 300, units = "in")
 plot_grid(fig_S9a, fig_S9b, labels = "auto",
-                   rel_widths = c(3,2))
+          rel_widths = c(3,2))
 dev.off()
+## Figure S10: trait space for MEM simulations ####
+
+for_MEM_full <- readRDS(here("outputs/CMEM_runs", "traits_for_MEM_simulations.rds"))
+
+png(here("figs_tables","FigureS10_randomdrawsMEM.png"), width = 6.7, height = 5.7,
+    res = 300, units = "in")
+ggpairs(for_MEM_full, lower = list(continuous = wrap("smooth", alpha = 0.3, size=1))) +
+  theme_bw() + ylab("trait value") + xlab("trait value")
+dev.off()
+

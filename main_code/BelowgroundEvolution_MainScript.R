@@ -36,6 +36,8 @@ n.iter <- 10000
 n.adapt <- 1000
 thin <- 3
 
+set.seed(1234)
+
 
 ## Fit all basic trait models ####
 
@@ -65,6 +67,45 @@ saveRDS(height_out, here("outputs/monoculture_models", "height_monomodel.rds"))
 saveRDS(density_out, here("outputs/monoculture_models", "density_monomodel.rds"))
 saveRDS(beta_out, here("outputs/monoculture_models", "beta_monomodel.rds"))
 
+# Calculate ICC for all traits
+calculate_icc <- function(coda_object){
+  ggs(coda_object) %>% 
+    filter(Parameter %in% c("sigma.res", "sigma.int")) %>% 
+    spread(key = Parameter, value = value) %>% 
+    mutate(ICC = sigma.int^2 / (sigma.int^2 + sigma.res^2)) %>% 
+    summarize(mean = mean(ICC),
+              lower = quantile(ICC, 0.025),
+              upper = quantile(ICC, 0.975))
+}
+
+calculate_icc(agb_out)
+# mean    lower upper
+# 0.222 0.000756 0.564
+calculate_icc(width_out)
+# mean  lower upper
+# 0.438 0.0439 0.762
+calculate_icc(height_out)
+# mean     lower upper
+# 0.141 0.0000218 0.479
+calculate_icc(rs_out)
+# mean lower upper
+# 0.686 0.427 0.875
+calculate_icc(bgb_out)
+# mean lower upper
+# 0.518 0.174 0.791
+calculate_icc(beta_out)
+
+# Use Nakagawa et al. equation to calculate ICC for poisson regression
+ggs(density_out) %>% 
+  spread(key = Parameter, value = value) %>%
+  mutate(sigma2.res = log(1 + 1/mean(mono_traits$density))) %>% 
+  mutate(sigma2.int = sigma.int^2) %>% 
+  mutate(ICC = sigma2.int / (sigma2.int + sigma2.res)) %>% 
+  summarize(mean = mean(ICC),
+            lower = quantile(ICC, 0.025),
+            upper = quantile(ICC, 0.975))
+# mean  lower upper
+# 0.335 0.0566 0.641
 
 ## Fit all trait models for age + provenance additive effects ####
 
@@ -146,13 +187,13 @@ predicted_rs %>%
   rowMeans() -> rs_sellman
 
 # Calculate absolute difference in means
-mean(rs_corn - rs_sellman) # 0.1161002
+mean(rs_corn - rs_sellman) # 0.1169472
 # Calculate 95% credible interval of difference in means
-quantile(rs_corn - rs_sellman, c(0.025, 0.975)) # 0.01702895 0.21188719
+quantile(rs_corn - rs_sellman, c(0.025, 0.975)) # 0.01495532 0.21376161
 # Calculate mean percent increase from Sellman to Corn
-mean(rs_corn / rs_sellman - 1) # 0.1776576
+mean(rs_corn / rs_sellman - 1) # 0.1790472
 # Calculate 95% credible interval percent increase from Sellman to Corn
-quantile(rs_corn/rs_sellman - 1, c(0.025, 0.975)) # 0.02320939 0.35092684 
+quantile(rs_corn/rs_sellman - 1, c(0.025, 0.975)) # 0.02042893 0.35721248 
 
 # Calculate average predicted root-to-shoot for ancestral cohort
 predicted_rs %>% 
@@ -165,9 +206,9 @@ predicted_rs %>%
   rowMeans() -> rs_modern
 
 # Calculate mean percent decrease from ancestral to modern
-mean((rs_ancestral - rs_modern)/rs_ancestral) # 0.08648667
+mean((rs_ancestral - rs_modern)/rs_ancestral) # 0.08577855
 # Calculate 95% quantile for percent decrease from ancestral to modern
-quantile((rs_ancestral - rs_modern)/rs_ancestral, c(0.025, 0.975)) # -0.03826322  0.19962476  
+quantile((rs_ancestral - rs_modern)/rs_ancestral, c(0.025, 0.975)) # -0.04075874  0.19939038  
 
 
 ## Calculate effect sizes for text: stem width ####
@@ -208,9 +249,9 @@ predicted_widths %>%
   rowMeans() -> widths_modern
 
 # Calculate mean percent decrease from ancestral to modern
-mean((widths_ancestral - widths_modern)/widths_ancestral) # 0.05896701
+mean((widths_ancestral - widths_modern)/widths_ancestral) # 0.05566921
 # Calculate 95% credible interval of percent decrease from ancestral to modern
-quantile((widths_ancestral - widths_modern)/widths_ancestral, c(0.025, 0.975)) # -0.03401524  0.14842040   
+quantile((widths_ancestral - widths_modern)/widths_ancestral, c(0.025, 0.975)) # -0.03496703  0.14512516   
 
 
 ## Calculate effect sizes for text: stem height ####
@@ -253,7 +294,7 @@ predicted_heights %>%
 # Calculate mean percent increase from Corn to Sellman
 mean((heights_sellman - heights_corn)/heights_corn) # 0.0297219
 # Calculate 95% credible interval percent increase from Corn to Sellman
-quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01528762  0.07602574   
+quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01462301  0.07517578   
 
 
 ## Monoculture vs polyculture analysis ####
@@ -796,36 +837,52 @@ tibble(elevation_store_withcohorts) %>%
 ##
 
 # Differences in final marsh elevation due to genotype
-mean(run_store[,80]) # 29.33026
-quantile(run_store[,80], c(0.025, 0.975)) # 26.66471 33.08620 
+CMEM_predictions_belowground %>% 
+  filter(year == 2100) %>% 
+  summarize(mean = mean(value),
+            lower = quantile(value, 0.025),
+            upper = quantile(value, 0.975))
 
 # Average vertical accretion rates
-init_elev <- 22.6
-avg_accretion_rates <- (run_store[,80] - init_elev) / 80
-mean(avg_accretion_rates)
-quantile(avg_accretion_rates, c(0.025, 0.975))
+avg_rates %>% 
+  gather(key = state, value = rate, avg_acc:avg_C) %>% 
+  group_by(state) %>% 
+  summarize(mean = mean(rate),
+            lower = quantile(rate, 0.025),
+            upper = quantile(rate, 0.975),
+            perc_inc = (upper - lower)/lower)
 
-# Average carbon accumulation rates
-avg_C_accum_rate <- (carbon_store[,80] - carbon_store[,1]) / 80
-mean(avg_C_accum_rate)
-quantile(avg_C_accum_rate, c(0.025, 0.975))
+# % diff accretion rate for provenances
+cohort_summary %>% 
+  group_by(location) %>% 
+  summarize(across(where(is.numeric), mean)) -> summary_rates_provenances
 
-# % diff accretion rate for ecotypes and age cohorts
-# Increase accretion rate from sellman to corn
-mean(cohort_summary$acc_v[c(1,3)]) / mean(cohort_summary$acc_v[c(2,4)])
-# Decrease in accretion rate from ancestral to modern
-(mean(cohort_summary$acc_v[c(1,2)]) - mean(cohort_summary$acc_v[c(3,4)])) / mean(cohort_summary$acc_v[c(1,2)])
-# Increase in accretion rate from modern to ancestral
-mean(cohort_summary$acc_v[c(1,2)]) / mean(cohort_summary$acc_v[c(3,4)])
+# Corn is 1, Sellman is 2
+# Vertical accretion rate
+(summary_rates_provenances[1, "acc_v"]-summary_rates_provenances[2, "acc_v"])/
+  summary_rates_provenances[2, "acc_v"]
+# 0.06896516
 
-# Same for C accumulation
-# Increase carbon accumulation rate from sellman to corn
-mean(cohort_summary$acc_C[c(1,3)]) / mean(cohort_summary$acc_C[c(2,4)])
-# Decrease in carbon accumulation rate from ancestral to modern
-(mean(cohort_summary$acc_C[c(1,2)]) - mean(cohort_summary$acc_C[c(3,4)])) / mean(cohort_summary$acc_C[c(1,2)])
-# Increase in carbon accumulation rate from modern to ancestral
-mean(cohort_summary$acc_C[c(1,2)]) / mean(cohort_summary$acc_C[c(3,4)])
+# Carbon accumulation rate
+(summary_rates_provenances[1, "acc_C"]-summary_rates_provenances[2, "acc_C"])/
+  summary_rates_provenances[2, "acc_C"]
+# 0.08708251
 
+# Same for age cohorts
+cohort_summary %>% 
+  group_by(age) %>% 
+  summarize(across(where(is.numeric), mean)) -> summary_rates_cohorts
+
+# Ancestral is 1, Modern is 2
+# Vertical accretion rate
+(summary_rates_cohorts[1, "acc_v"]-summary_rates_cohorts[2, "acc_v"])/
+  summary_rates_cohorts[2, "acc_v"]
+# 0.190967
+
+# Carbon accumulation rate
+(summary_rates_cohorts[1, "acc_C"]-summary_rates_cohorts[2, "acc_C"])/
+  summary_rates_cohorts[2, "acc_C"]
+# 0.2453225
 
 ## Cohort Marsh Equilibrium Model Simulations - AGB varies only ####
 
