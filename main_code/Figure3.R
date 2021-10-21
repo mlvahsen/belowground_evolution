@@ -17,7 +17,7 @@
 ## Preliminaries ####
 
 # Load libraries
-library(tidyverse); library(cowplot)
+library(tidyverse); library(cowplot); library(here); library(ggmcmc); library(lme4)
 
 # Set colors for plotting
 colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
@@ -121,6 +121,13 @@ calculate_prop_var <- function(coda_object, trait, model_template){
 
 }
 
+# Set frame to be a factor
+cs_traits$frame <- as.factor(cs_traits$frame)
+
+# Create model template
+model_template_cs <- lmer(agb ~ ln_depth + ic_weight + frame +
+                            location + age + (1|genotype), data = cs_traits)
+
 prop_biomass <- as.numeric(calculate_prop_var(cs_agb_out, "agb", model_template_cs))
 prop_width <- as.numeric(calculate_prop_var(cs_width_out, "width", model_template_cs))
 prop_bgb <- as.numeric(calculate_prop_var(cs_bgb_out, "bgb", model_template_cs))
@@ -197,7 +204,7 @@ tibble(trait = c("abg", "density", "height", "width", "bgb", "rs", "beta"),
   scale_fill_manual(values = c("gray67", "gray87","#08519c","#3182bd","#9ecae1")) +
   coord_flip() +
   scale_x_discrete(labels = c("root parameter","root:shoot", "bg biomass", "stem width",
-                              "stem height", "stem density", "abg biomass")) +
+                              "stem height", "stem density", "ag biomass")) +
   ylab("proportion of variance") + theme_classic()+ theme(legend.position = "top", legend.title = element_blank()) +
   guides(fill = guide_legend(reverse = TRUE)) -> stack_plot
 
