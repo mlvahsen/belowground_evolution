@@ -527,9 +527,6 @@ anova(width_mod) # ns
 
 ## Cohort Marsh Equilibrium Model Simulations - All traits vary ####
 
-colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
-
-
 ## Cohort Marsh Equilibrium Model Simulations
 
 # Parameter estimates for bMax and root:shoot from Blue Genes 2019 experiment

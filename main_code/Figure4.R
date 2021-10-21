@@ -24,7 +24,7 @@
 ## Preliminaries ####
 
 # Load libraries
-library(tidyverse); library(cowplot)
+library(tidyverse); library(cowplot); library(here)
 
 # Read in outputs from CMEM runs where agb, r:s, and rooting depth were
 # manipulated
@@ -35,6 +35,9 @@ cmem_agb <- read_rds(here("outputs/CMEM_runs", "CMEM_predictions_agb_only.rds"))
 cmem_rates <- read_rds(here("outputs/CMEM_runs", "CMEM_rates_full.rds"))
 # Read in average accretion and C accumulation rates from full model by cohort
 cmem_rates_cohort <- read_rds(here("outputs/CMEM_runs", "CMEM_rates_full_cohort.rds"))
+
+# Set colors for plotting
+colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
 
 ## Figure 4a ####
 
@@ -155,7 +158,7 @@ cmem_agb %>%
   pull(value) -> surface_elevation_2100_agb
 
 tibble(y = c(surface_elevation_2100_agb, surface_elevation_2100_full),
-       x = rep(c("agb only", "agb + bgb"), each = length(surface_elevation_2100_agb))) %>% 
+       x = rep(c("ag only", "ag + bg"), each = length(surface_elevation_2100_agb))) %>% 
   ggplot(aes(x = x, y = y, fill = x)) +
   geom_violin(draw_quantiles = c(0.025,0.5, 0.975), size = 0.5, alpha = 0.4) +
   scale_fill_manual(values = c("gray11", "gray67")) +
