@@ -77,7 +77,7 @@ tibble(diff_df) %>%
                   size = 0.5, shape = 1) +
   ylab("scaled difference") +
   geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray47") +
-  scale_x_discrete(labels = c("ab biomass", "stem density", "stem height", "stem width",
+  scale_x_discrete(labels = c("ag biomass", "stem density", "stem height", "stem width",
                               "bg biomass", "root:shoot", "root parameter")) +
   annotate("text", x = 1.7, y = 0.2, label = "observed > predicted", size = 4, color = "black") +
   annotate("text", x = 1.7, y = -0.2, label = "predicted > observed", size =4, color = "black") +
