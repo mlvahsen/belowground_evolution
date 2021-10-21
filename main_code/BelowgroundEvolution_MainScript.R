@@ -502,26 +502,36 @@ saveRDS(diffs_by_age, here("outputs/monoculture_polyculture/", "diffs_by_age.rds
 
 # Check to see if there are significant differences by age group
 abg_mod <- lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)
-anova(abg_mod) # ns
+anova(abg_mod) 
 
 bgb_mod <- lm(`belowground biomass (g)` ~ age, data = diffs_by_age)
-anova(bgb_mod) # ns
+anova(bgb_mod) 
 
 density_mod <- lm(`stem density` ~ age, data = diffs_by_age)
-anova(density_mod) # ns
+anova(density_mod) 
 
-beta_mod <- lm(`root distribution parameter` ~ age, data = diffs_by_age)
-anova(beta_mod) # .
-emmeans::emmeans(beta_mod, ~ age) # mix has lower beta than would be expected based on additive
+# Mix is most different here so make it the reference level
+diffs_by_age_beta <-
+  diffs_by_age %>%
+  mutate(age = factor(age)) %>% 
+  mutate(age = relevel(age, ref = "mix"))
+beta_mod <- lm(`root distribution parameter` ~ age, data = diffs_by_age_beta)
+# Get estimate of mean difference between groups
+coef(beta_mod)
+# Get confidence intervals around that difference
+confint(beta_mod)
 
 rs_mod <- lm(`root:shoot ratio` ~ age, data = diffs_by_age)
-anova(rs_mod) # ns
+# Get estimate of mean difference between groups
+coef(rs_mod)
+# Get confidence interval around that difference
+confint(rs_mod)
 
 height_mod <- lm(`mean stem height (cm)` ~ age, data = diffs_by_age)
-anova(height_mod) # ns
+anova(height_mod) 
 
 width_mod <- lm(`mean stem width (mm)` ~ age, data = diffs_by_age)
-anova(width_mod) # ns
+anova(width_mod) 
 
 
 
