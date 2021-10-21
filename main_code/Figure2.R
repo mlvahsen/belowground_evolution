@@ -5,7 +5,7 @@
 ## Preliminaries ####
 
 # Load libraries
-library(tidyverse); library(patchwork)
+library(tidyverse); library(patchwork); library(here)
 
 # Read in trait data
 all_traits <- read_csv(here("data", "CompiledTraitData.csv"))
@@ -76,24 +76,24 @@ tibble(diff_df) %>%
                   fun = mean,
                   size = 0.5, shape = 1) +
   ylab("scaled difference") +
-  geom_hline(aes(yintercept = 0), linetype = "dashed") +
+  geom_hline(aes(yintercept = 0), linetype = "dashed", color = "gray47") +
   scale_x_discrete(labels = c("ab biomass", "stem density", "stem height", "stem width",
                               "bg biomass", "root:shoot", "root parameter")) +
   annotate("text", x = 1.7, y = 0.2, label = "observed > predicted", size = 4, color = "black") +
   annotate("text", x = 1.7, y = -0.2, label = "predicted > observed", size =4, color = "black") +
   scale_y_continuous(expand = c(0,0), limits = c(-0.25,0.25)) +
   theme_bw() +
-  scale_color_manual(values = c("#313695","#4575b4", "black")) +
+  scale_color_manual(values = c("#fb9a99","#e31a1c", "gray47")) +
   theme(legend.position = "none",
-        axis.text.x = element_text(angle = 30, hjust = 1)) -> Fig2a
+        axis.text.x = element_text(angle = 30, hjust = 1)) -> Fig2a 
 
 ## Figure 2b - average non-additivity across age groups for r:s ####
 
 diffs_by_age %>% 
   select(age, `root:shoot ratio`) %>% 
   ggplot(aes(x = age, y = `root:shoot ratio`)) +
-  geom_boxplot(outlier.shape = NA, color = "#313695") +
-  geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#313695") +
+  geom_boxplot(outlier.shape = NA, color = "#fb9a99") +
+  geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#fb9a99") +
   scale_shape_manual(values = c(16,8,17)) +
   xlab("age cohort") +
   ylab("root:shoot (scaled diff)") +
@@ -104,8 +104,8 @@ diffs_by_age %>%
 diffs_by_age %>% 
   select(age, `root distribution parameter`) %>% 
   ggplot(aes(x = age, y = `root distribution parameter`)) +
-  geom_boxplot(outlier.shape = NA, color = "#4575b4") +
-  geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#4575b4") +
+  geom_boxplot(outlier.shape = NA, color = "#e31a1c") +
+  geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#e31a1c") +
   scale_shape_manual(values = c(16,8,17)) +
   xlab("age cohort") + 
   ylab("root parameter (scaled diff)") +
