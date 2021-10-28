@@ -1038,6 +1038,15 @@ tibble(elevation_store_withcohorts_agb_only) %>%
                                iteration == "1004" ~ "sellman-modern",
                                T ~ iteration))  -> CMEM_predictions_agb_only
 
+# Calculate uncertainty at year 2100 for agb only
+CMEM_predictions_agb_only %>% 
+  filter(year == 2100) %>% 
+  summarize(mean = mean(value),
+            lower = quantile(value, 0.025),
+            upper = quantile(value, 0.975))
+# mean lower upper
+# 29.1  27.6  31.0
+
 # Save output from both simulations for plotting later
 write_rds(CMEM_predictions_belowground, here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))
 write_rds(CMEM_predictions_agb_only, here("outputs/CMEM_runs", "CMEM_predictions_agb_only.rds"))
