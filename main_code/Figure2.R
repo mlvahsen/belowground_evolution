@@ -90,6 +90,9 @@ tibble(diff_df) %>%
 ## Figure 2b - average non-additivity across age groups for r:s ####
 
 diffs_by_age %>% 
+  mutate(age = case_when(age == "modern" ~ "descendant",
+                         T ~ age)) %>% 
+  mutate(age = factor(age, levels = c("ancestral", "mix", "descendant"))) %>% 
   select(age, `root:shoot ratio`) %>% 
   ggplot(aes(x = age, y = `root:shoot ratio`)) +
   geom_boxplot(outlier.shape = NA, color = "#fb9a99") +
@@ -102,6 +105,9 @@ diffs_by_age %>%
 
 ## Figure 2c - average non-additivity across age groups for root distribution ####
 diffs_by_age %>% 
+  mutate(age = case_when(age == "modern" ~ "descendant",
+                         T ~ age)) %>%
+  mutate(age = factor(age, levels = c("ancestral", "mix", "descendant"))) %>% 
   select(age, `root distribution parameter`) %>% 
   ggplot(aes(x = age, y = `root distribution parameter`)) +
   geom_boxplot(outlier.shape = NA, color = "#e31a1c") +
