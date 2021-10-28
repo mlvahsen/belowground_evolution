@@ -266,6 +266,9 @@ plot_data %>%
 
 # Create inset graph to show differences in parameter values
 cs_traits %>%
+  mutate(age = case_when(age == "modern" ~ "descendant",
+                         T ~ age)) %>%
+  mutate(age = factor(age, levels = c("ancestral", "mix", "descendant"))) %>% 
   mutate(location = case_when(location == "corn" ~ "Corn Island",
                               T ~ "Sellman Creek")) %>% 
   ggplot(aes(x = age, y = beta)) +
@@ -280,7 +283,7 @@ cs_traits %>%
 
 ggdraw() +
   draw_plot(b_main) +
-  draw_plot(b_inset, x = 0.35, y = 0.15, width = 0.6, height = 0.4) -> fig3_beta_updated
+  draw_plot(b_inset, x = 0.25, y = 0.15, width = 0.7, height = 0.4) -> fig3_beta_updated
 
 
 ## Bring plots together ####
