@@ -296,6 +296,23 @@ mean((heights_sellman - heights_corn)/heights_corn) # 0.0297219
 # Calculate 95% credible interval percent increase from Corn to Sellman
 quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01462301  0.07517578   
 
+# Repeat the same process for age
+# Calculate predicted height for ancestral
+predicted_heights %>% 
+  dplyr::select(contains("age1")) %>% 
+  rowMeans() -> heights_anc
+
+# Calculate predicted height for modern
+predicted_heights %>% 
+  dplyr::select(contains("age2")) %>% 
+  rowMeans() -> heights_mod
+
+# Calculate mean percent increase from ancestral to modern
+mean((heights_mod - heights_anc)/heights_anc) # 0.003301437
+# Calculate 95% credible interval percent increase from ancestral to modern
+quantile((heights_mod - heights_anc)/heights_anc, c(0.025, 0.975)) # -0.03760141  0.04386239   
+
+
 
 ## Monoculture vs polyculture analysis ####
 
@@ -1020,6 +1037,15 @@ tibble(elevation_store_withcohorts_agb_only) %>%
                                iteration == "1003" ~ "corn-modern",
                                iteration == "1004" ~ "sellman-modern",
                                T ~ iteration))  -> CMEM_predictions_agb_only
+
+# Calculate uncertainty at year 2100 for agb only
+CMEM_predictions_agb_only %>% 
+  filter(year == 2100) %>% 
+  summarize(mean = mean(value),
+            lower = quantile(value, 0.025),
+            upper = quantile(value, 0.975))
+# mean lower upper
+# 29.1  27.6  31.0
 
 # Save output from both simulations for plotting later
 write_rds(CMEM_predictions_belowground, here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))
