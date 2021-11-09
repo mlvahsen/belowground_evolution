@@ -5,7 +5,8 @@
 # Load libraries
 library(patchwork);library(raster); library(maps); library(cowplot);
 library(ggsn); library(ggmap); library(tidyverse);
-library(ggrepel); library(here); library(mvtnorm); library(GGally)
+library(ggrepel); library(here); library(mvtnorm); library(GGally);
+library(ggmcmc)
 
 ## Read in data
 # Derived trait data for all pots
@@ -124,7 +125,7 @@ FigS2 <- pred_age_summary_stat %>%
   scale_x_reverse() +
   scale_color_manual(values = c("gray67", "gray27")) +
   xlab("seed depth (cm)") +
-  geom_label(aes(y = 5, x = 2.5), label = "modern", size = 6,
+  geom_label(aes(y = 10, x = 2.5), label = "descendant", size = 6,
              color = "gray67", label.size = 1) +
   geom_label(aes(y = 75, x = 11.5), label = "ancestral", size = 6,
              color = "gray27", label.size = 1)
@@ -165,6 +166,8 @@ get_icc_pois <- function(coda_object){
 # Plotting function
 make_fig1_panel <- function(data, coda_object, trait, label_y, legend, xlab){
   data %>% 
+    mutate(`age cohort` = case_when(`age cohort` == "modern" ~ "descendant",
+                                    `age cohort` == "ancestral" ~ "ancestral")) %>% 
     mutate(genotype_name = genotype) %>% 
     mutate(genotype_code = as.numeric(as.factor(genotype))) %>% 
     group_by(genotype_code, genotype_name, provenance, `age cohort`) %>% 
@@ -185,19 +188,19 @@ make_fig1_panel <- function(data, coda_object, trait, label_y, legend, xlab){
                                  Label == "S1CDI" ~ "sa1",
                                  Label == "S1CSJ" ~ "sa2",
                                  Label == "S1CSK" ~ "sa3",
-                                 Label == "C1BP" ~ "cm1",
-                                 Label == "C1BR" ~ "cm2",
-                                 Label == "C2BT" ~ "cm3",
-                                 Label == "C3AS" ~ "cm4",
-                                 Label == "S1ADN" ~ "sm1",
-                                 Label == "S1CDP" ~ "sm2",
-                                 Label == "H1A1P" ~ "hm1",
-                                 Label == "KM1B2P" ~ "km1")) -> out
+                                 Label == "C1BP" ~ "cd1",
+                                 Label == "C1BR" ~ "cd2",
+                                 Label == "C2BT" ~ "cd3",
+                                 Label == "C3AS" ~ "cd4",
+                                 Label == "S1ADN" ~ "sd1",
+                                 Label == "S1CDP" ~ "sd2",
+                                 Label == "H1A1P" ~ "hd1",
+                                 Label == "KM1B2P" ~ "kd1")) -> out
   
   out$new_Label <- factor(out$new_Label , levels=c("ca1", "ca2", "ca3", "ca4","ca5",
                                                    "sa1", "sa2", "sa3",
-                                                   "cm1", "cm2", "cm3", "cm4",
-                                                   "sm1", "sm2", "hm1", "km1"))
+                                                   "cd1", "cd2", "cd3", "cd4",
+                                                   "sd1", "sd2", "hd1", "kd1"))
   
   if(trait == "stem density"){
     out %>% 
@@ -247,8 +250,8 @@ make_fig1_panel <- function(data, coda_object, trait, label_y, legend, xlab){
 }
 
 # Make plots
-fig1_bgb <- make_fig1_panel(mono_traits, bgb_out, "belowground biomass (g)", 9.5, "top", "")
-fig1_agb <- make_fig1_panel(mono_traits, agb_out, "aboveground biomass (g)", 10, "none", "")
+fig1_bgb <- make_fig1_panel(mono_traits, bgb_out, "belowground biomass (g)", 8.5, "top", "")
+fig1_agb <- make_fig1_panel(mono_traits, agb_out, "aboveground biomass (g)", 9, "none", "")
 fig1_density <- make_fig1_panel(mono_traits, density_out, "stem density", 55, "none", "")
 fig1_width <- make_fig1_panel(mono_traits, width_out, "mean stem width (mm)", 3.4, "none", "")
 fig1_height <- make_fig1_panel(mono_traits, height_out, "mean stem height (cm)", 47.5, "none", "")
@@ -293,9 +296,14 @@ diffs_by_age %>%
                                           "root:shoot ratio",
                                           "root distribution parameter"))) %>%
   mutate(cohort = age) %>%
+  mutate(cohort = case_when(cohort == "ancestral" ~ "ancestral",
+                            cohort == "modern" ~ "descendant",
+                            T ~ "mix")) %>% 
+  mutate(cohort = factor(cohort, levels = c("ancestral", "mix", "descendant"))) %>% 
   ggplot(aes(x = cohort, y = difference, pch = cohort)) +
   geom_boxplot(outlier.shape = NA)+
   geom_jitter(height = 0, width = 0.2, alpha = 0.2, size = 3) +
+  geom_hline(aes(yintercept = 0), linetype = "dashed") +
   facet_wrap(~trait, scales = "free_y", nrow = 2) +
   scale_shape_manual(values = c(16,8,17)) +
   ylab("scaled difference") + theme_classic() +
@@ -318,6 +326,8 @@ anova(lm(`root distribution parameter` ~ age, data = diffs_by_age)) # .
 ## Figure S5: root-to-shoot ratio differs by provenance and cohort ####
 mono_traits %>% 
   filter(provenance %in% c("corn", "sellman")) %>% 
+  mutate(`age cohort` = case_when(`age cohort` == "ancestral" ~ "ancestral",
+                                  T ~ "descendant")) %>% 
   ggplot(aes(x = provenance, y = rs)) +
   geom_boxplot(aes(color = provenance)) +
   geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,size = 3, alpha = 0.5) +
@@ -327,6 +337,8 @@ mono_traits %>%
 
 mono_traits %>% 
   filter(provenance %in% c("corn", "sellman")) %>% 
+  mutate(`age cohort` = case_when(`age cohort` == "ancestral" ~ "ancestral",
+                                  T ~ "descendant")) %>%
   ggplot(aes(x = `age cohort`, y = rs)) +
   geom_boxplot() +
   geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,size = 3, alpha = 0.5) +
@@ -342,6 +354,8 @@ dev.off()
 ## Figure S6: stem width differs by cohort ####
 mono_traits %>% 
   filter(provenance %in% c("corn", "sellman")) %>% 
+  mutate(`age cohort` = case_when(`age cohort` == "ancestral" ~ "ancestral",
+                                  T ~ "descendant")) %>%
   ggplot(aes(x = `age cohort`, y = mean_mid_width)) +
   geom_boxplot() +
   geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,
@@ -366,8 +380,10 @@ tibble(cohort = mono_traits$`age cohort`,
        `root:shoot ratio` = mono_traits$rs,
        `root distribution parameter` = mono_traits$beta) %>% 
   gather(key = trait, value = value, `aboveground biomass (g)`:`root distribution parameter`) %>% 
+  mutate(cohort = case_when(cohort == "ancestral" ~ "ancestral",
+                                  T ~ "descendant")) %>%
   mutate(combo = paste(substr(provenance, 1, 1), substr(cohort, 1, 1), sep = "")) %>% 
-  mutate(combo = factor(combo, levels = c("ca", "sa", "cm", "sm", "hm", "km"))) %>% 
+  mutate(combo = factor(combo, levels = c("ca", "sa", "cd", "sd", "hd", "kd"))) %>% 
   mutate(trait = factor(trait, levels = c("aboveground biomass (g)",
                                           "stem density",
                                           "mean stem height (cm)",
@@ -396,6 +412,8 @@ dev.off()
 ## Figure S8: stem height differs by cohort ####
 mono_traits %>% 
   filter(provenance %in% c("corn", "sellman")) %>% 
+  mutate(`age cohort` = case_when(`age cohort` == "ancestral" ~ "ancestral",
+                                  T ~ "descendant")) %>%
   ggplot(aes(x = provenance, y = mean_tot_height)) +
   geom_boxplot(aes(color = provenance), outlier.shape = NA) +
   geom_jitter(aes(color = provenance, shape = `age cohort`), height = 0, width = 0.1,
