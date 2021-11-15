@@ -157,23 +157,24 @@ cmem_agb %>%
   filter(year == "2100") %>% 
   pull(value) -> surface_elevation_2100_agb
 
-tibble(y = c(surface_elevation_2100_agb, surface_elevation_2100_full),
-       x = rep(c("ag only", "ag + bg"), each = length(surface_elevation_2100_agb))) %>% 
+tibble(y = c(surface_elevation_2100_full, surface_elevation_2100_agb),
+       x = rep(c("ag + bg", "ag only"), each = length(surface_elevation_2100_agb))) %>% 
+  mutate(x = factor(x, levels = c("ag only", "ag + bg"))) %>% 
   ggplot(aes(x = x, y = y, fill = x)) +
   geom_violin(draw_quantiles = c(0.025,0.5, 0.975), size = 0.5, alpha = 0.4) +
-  scale_fill_manual(values = c("gray11", "gray67")) +
+  scale_fill_manual(values = c("gray67", "gray11")) +
   theme_bw() +
   theme(legend.position = "none") +
   ylab("elevation in year 2100 (cm NAVD88)") +
   xlab("scenario")-> Fig4_panelE
 
 ## Bring all plots together ####
-Fig4_panelsBC <- plot_grid(Fig4_panelB, Fig4_panelC, nrow = 2, labels = c("b", "c"))
-Fig4_panelA_label <- plot_grid(Fig4_panelA, labels = "a")
-Fig4_panelsDE <- plot_grid(Fig4_panelD, Fig4_panelE, nrow = 1,
-                                    labels = c("d", "e"), rel_widths = c(3,2))
-Fig4_panelsABC <- plot_grid(Fig4_panelA_label, Fig4_panelsBC, rel_widths = c(3,2))
-Fig4_panelsABCDE <- plot_grid(Fig4_panelsABC, Fig4_panelsDE, nrow = 2)
+Fig4_panelsDE <- plot_grid(Fig4_panelB, Fig4_panelC, nrow = 2, labels = c("d", "e"))
+Fig4_panelC_label <- plot_grid(Fig4_panelA, labels = "c")
+Fig4_panelsAB <- plot_grid(Fig4_panelD, Fig4_panelE, nrow = 1,
+                                    labels = c("a", "b"), rel_widths = c(3,2))
+Fig4_panelsCDE <- plot_grid(Fig4_panelC_label, Fig4_panelsDE, rel_widths = c(3,2))
+Fig4_panelsABCDE <- plot_grid(Fig4_panelsAB, Fig4_panelsCDE, nrow = 2)
 
 png(here("figs_tables", "Figure4.png"), height = 6.8, width = 8, units = "in", res = 300)
 Fig4_panelsABCDE
