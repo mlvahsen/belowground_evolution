@@ -157,6 +157,9 @@ cmem_agb %>%
   filter(year == "2100") %>% 
   pull(value) -> surface_elevation_2100_agb
 
+# Calculate decrease in variance from full to ag only
+(var(surface_elevation_2100_full) - var(surface_elevation_2100_agb)) / var(surface_elevation_2100_full)
+
 tibble(y = c(surface_elevation_2100_full, surface_elevation_2100_agb),
        x = rep(c("ag + bg", "ag only"), each = length(surface_elevation_2100_agb))) %>% 
   mutate(x = factor(x, levels = c("ag only", "ag + bg"))) %>% 
