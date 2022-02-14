@@ -61,6 +61,11 @@ sink()
 
 ## Create functions to extract JAGS samples ####
 
+# Create seed
+seed <- 1234
+# Set burn-in
+n.burn <- 1000
+
 # Define get_samples functions (runs jags and extracts jags.samples and
 # dic.samples) for three types of models (Gaussian w/ genotype random intercept,
 # Poisson w/ genotype random intercept, Gaussian without genotype random intercept)
@@ -88,18 +93,24 @@ get_samples_fixed <- function(model, data, trait){
     list(
       alpha = 1,
       beta = rep(0, nbeta),
-      sigma.res = 20
+      sigma.res = 20,
+      .RNG.name = "base::Mersenne-Twister",
+      .RNG.seed = seed
     ),
     list(
       alpha = 2,
       beta = rep(5, nbeta),
-      sigma.res = 2
+      sigma.res = 2,
+      .RNG.name = "base::Mersenne-Twister",
+      .RNG.seed = seed
     )
   )
   
   # Fit JAGS model with gaussian likelihood and genotype as random intercept
   jm_mono = jags.model("main_code/Gaussian_Model", data=data_jags, 
                        n.adapt = n.adapt, inits=inits, n.chains=length(inits))
+  # Add burn-in
+  update(jm_mono, n.burn)
   # Get DIC samples
   dic_mono = dic.samples(jm_mono, n.iter = n.iter)
   
@@ -136,20 +147,26 @@ get_samples <- function(model, data, trait){
       beta = rep(0, nbeta),
       sigma.res = 20,
       sigma.int = 10,
-      mu.alpha = 8
+      mu.alpha = 8,
+      .RNG.name = "base::Mersenne-Twister",
+      .RNG.seed = seed
     ),
     list(
       alpha = rep(5, nalpha),
       beta = rep(5, nbeta),
       sigma.res = 2,
       sigma.int = 12,
-      mu.alpha = 8
+      mu.alpha = 8,
+      .RNG.name = "base::Mersenne-Twister",
+      .RNG.seed = seed
     )
   )
   
   # Fit JAGS model with gaussian likelihood and genotype as random intercept
   jm_mono = jags.model("main_code/Gaussian_RI_Model.txt", data=data_jags, 
                        n.adapt = n.adapt, inits=inits, n.chains=length(inits))
+  # Remove burn-in
+  update(jm_mono, n.burn)
   # Get DIC samples
   dic_mono = dic.samples(jm_mono, n.iter = n.iter)
   
@@ -185,19 +202,24 @@ get_samples_pois <- function(model, data){# Get model matrices from linear model
       alpha = rep(1, nalpha),
       beta = rep(1, nbeta),
       sigma.int = 2,
-      mu.alpha = 8
+      mu.alpha = 8,
+      .RNG.name = "base::Mersenne-Twister",
+      .RNG.seed = seed
     ),
     list(
       alpha = rep(5, nalpha),
       beta = rep(5, nbeta),
       sigma.int = 1,
-      mu.alpha = 8
+      mu.alpha = 8,
+      .RNG.name = "base::Mersenne-Twister",
+      .RNG.seed = seed
     )
   )
   
   jm_mono = jags.model("main_code/Poisson_RI_Model.txt", data=data_jags, 
                        n.adapt = n.adapt, inits=inits, n.chains=length(inits))
-  
+  # Remove burn-in
+  update(jm_mono, n.burn)
   dic_mono = dic.samples(jm_mono, n.iter = n.iter)
   
   return(list(dic_mono = dic_mono, jm_mono = jm_mono))}

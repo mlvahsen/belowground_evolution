@@ -36,6 +36,7 @@ n.iter <- 10000
 n.adapt <- 1000
 thin <- 3
 
+# COMMENT THIS!!!
 set.seed(1234)
 
 
@@ -429,8 +430,8 @@ saveRDS(beta_additive, here("outputs/monoculture_polyculture/","monopoly_beta_ad
 
 # Create storage to hold differences between predicted and observed traits. This
 # should be the same dimensions as the additive predictions matrix
-pred_obs_diff <- matrix(NA, nrow = nrow(biomass_additive$MonoPredict),
-                        ncol = ncol(biomass_additive$MonoPredict))
+pred_obs_diff <- matrix(NA, nrow = nrow(agb_additive$MonoPredict),
+                        ncol = ncol(agb_additive$MonoPredict))
 
 # Loop through polyculture pots (n = 48) to get differences at each iteration.
 # This is for figure 2a.
