@@ -69,7 +69,7 @@ n.burn <- 1000
 # Define get_samples functions (runs jags and extracts jags.samples and
 # dic.samples) for three types of models (Gaussian w/ genotype random intercept,
 # Poisson w/ genotype random intercept, Gaussian without genotype random intercept)
-get_samples_fixed <- function(model, data, trait){
+get_samples_fixed <- function(model, data, trait, seed){
   # Get model matrices from linear models
   M_all <- as.matrix(model.matrix(model)[ , -1])
   
@@ -117,7 +117,7 @@ get_samples_fixed <- function(model, data, trait){
   # Return both JAGS samples and DIC samples
   return(list(dic_mono = dic_mono, jm_mono = jm_mono))}
 
-get_samples <- function(model, data, trait){
+get_samples <- function(model, data, trait, seed){
   # Get model matrices from linear models
   M_all <- as.matrix(model.matrix(model)[ , -1])
   
@@ -173,7 +173,7 @@ get_samples <- function(model, data, trait){
   # Return both JAGS samples and DIC samples
   return(list(dic_mono = dic_mono, jm_mono = jm_mono))}
 
-get_samples_pois <- function(model, data){# Get model matrices from linear models
+get_samples_pois <- function(model, data, seed){# Get model matrices from linear models
   
   M_all <- as.matrix(model.matrix(model)[ , -1])
   
@@ -224,18 +224,17 @@ get_samples_pois <- function(model, data){# Get model matrices from linear model
   
   return(list(dic_mono = dic_mono, jm_mono = jm_mono))}
 
-
 ## Create function to run all models ####
 
 # This will run the model that will be either Gaussian or Poisson based on the
 # trait specified and will show convergence diagnostic plots if diag_plot is set
 # to TRUE
-run_models <- function(trait_data, trait, model_template, diag_plot = F){
+run_models <- function(trait_data, trait, model_template, diag_plot = F, seed){
   # Set up data structure
   if(trait == "density"){
-    jags_out <- get_samples_pois(model_template, trait_data)
+    jags_out <- get_samples_pois(model_template, trait_data, seed)
   }else{
-    jags_out <- get_samples(model_template, trait_data, trait)
+    jags_out <- get_samples(model_template, trait_data, trait, seed)
   }
   model_coda <- coda.samples(jags_out$jm_mono, variable.names = c("beta", "alpha","sigma.res","sigma.int", "mu.alpha"), n.iter=n.iter, thin = thin)  
   
@@ -273,9 +272,9 @@ run_models <- function(trait_data, trait, model_template, diag_plot = F){
   
 }
 
-run_models_fixed <- function(trait_data, trait, model_template, diag_plot = F){
+run_models_fixed <- function(trait_data, trait, model_template, diag_plot = F, seed){
   # Set up data structure
-  jags_out <- get_samples_fixed(model_template, trait_data, trait)
+  jags_out <- get_samples_fixed(model_template, trait_data, trait, seed)
   model_coda <- coda.samples(jags_out$jm_mono, variable.names = c("beta", "alpha","sigma.res","sigma.int", "mu.alpha"), n.iter=n.iter, thin = thin)  
   
   return(model_coda)

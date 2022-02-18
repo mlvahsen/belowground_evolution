@@ -3,9 +3,26 @@
 # This script runs the main analyses and sources additional functions within the
 # main_code folder
 
+## Uncomment lines below to install rCMEM (Cohort Marsh Equilibrium Model) ####
+
+# Uninstall and reinstall developer branch from GitHub
+
+# # 1. If rCMEM is loaded and in the memory, forget rCMEM
+# if ("rCMEM" %in% (.packages())){
+#   detach("package:rCMEM", unload=TRUE)
+# }
+# 
+# # 2. If remotes is not already installed, install it
+# if (! ("remotes" %in% installed.packages())) {
+#   install.packages("remotes")
+# }
+# 
+# # 3. Install package from developer branch of GitHub
+# devtools::install_github("https://github.com/tilbud/rCMEM/tree/JimH-dev")
+
 ## Load libraries ####
 library(tidyverse); library(ggmcmc); library(rjags); library(lme4)
-library(here); library(rCTM); library(mvtnorm); library(emmeans)
+library(here); library(rCMEM); library(mvtnorm); library(emmeans)
 
 ## Read in data ####
 
@@ -36,28 +53,28 @@ n.iter <- 10000
 n.adapt <- 1000
 thin <- 3
 
-# COMMENT THIS!!!
-set.seed(1234)
-
+# Set seed - this is optional. Setting seed to 1234 will reproduce exact results
+# as reported in the manuscript
+seed <- 1234
 
 ## Fit all basic trait models ####
 
 ## aboveground biomass
-agb_out <- run_models(mono_traits, "agb", model_template_mono, diag_plot = F)
+agb_out <- run_models(mono_traits, "agb", model_template_mono, diag_plot = F, seed = seed)
 ## stem density
-density_out <- run_models(mono_traits, "density", model_template_mono, diag_plot = F)
+density_out <- run_models(mono_traits, "density", model_template_mono, diag_plot = F, seed = seed)
 # Fails to set monitor for sigma.res because there is no residual variation in
 # Poisson regression (aka this warning is ok and expected)
 ## stem height
-height_out <- run_models(mono_traits, "mean_tot_height", model_template_mono, diag_plot = F)
+height_out <- run_models(mono_traits, "mean_tot_height", model_template_mono, diag_plot = F, seed = seed)
 ## stem width
-width_out <- run_models(mono_traits, "mean_mid_width", model_template_mono, diag_plot = F)
+width_out <- run_models(mono_traits, "mean_mid_width", model_template_mono, diag_plot = F, seed = seed)
 ## belowground biomass
-bgb_out <- run_models(mono_traits, "bgb", model_template_mono, diag_plot = F)
+bgb_out <- run_models(mono_traits, "bgb", model_template_mono, diag_plot = F, seed = seed)
 ## root-to-shoot ratio
-rs_out <- run_models(mono_traits, "rs", model_template_mono, diag_plot = F)
+rs_out <- run_models(mono_traits, "rs", model_template_mono, diag_plot = F, seed = seed)
 ## beta (belowground biomass distribution parameter)
-beta_out <- run_models(mono_traits, "beta", model_template_mono, diag_plot = F)
+beta_out <- run_models(mono_traits, "beta", model_template_mono, diag_plot = F, seed = seed)
 
 # Save as R data file objects to use later for plotting and subsequent analyses
 saveRDS(agb_out, here("outputs/monoculture_models", "agb_monomodel.rds"))
@@ -81,20 +98,22 @@ calculate_icc <- function(coda_object){
 
 calculate_icc(agb_out)
 # mean    lower upper
-# 0.222 0.000756 0.564
+# 0.230 0.00211 0.578
 calculate_icc(width_out)
 # mean  lower upper
-# 0.438 0.0439 0.762
+# 0.440 0.0484 0.760
 calculate_icc(height_out)
 # mean     lower upper
-# 0.141 0.0000218 0.479
+# 0.159 0.00140 0.499
 calculate_icc(rs_out)
 # mean lower upper
-# 0.686 0.427 0.875
+# 0.691 0.437 0.877
 calculate_icc(bgb_out)
 # mean lower upper
-# 0.518 0.174 0.791
+# 0.516 0.157 0.788
 calculate_icc(beta_out)
+# mean lower upper
+# 0.495 0.157 0.773
 
 # Use Nakagawa et al. equation to calculate ICC for poisson regression
 ggs(density_out) %>% 
@@ -106,7 +125,7 @@ ggs(density_out) %>%
             lower = quantile(ICC, 0.025),
             upper = quantile(ICC, 0.975))
 # mean  lower upper
-# 0.335 0.0566 0.641
+# 0.328 0.0335 0.643
 
 ## Fit all trait models for age + provenance additive effects ####
 
@@ -124,21 +143,26 @@ model_template_cs <- lmer(agb ~ ln_depth + ic_weight + frame +
                             location + age + (1|genotype), data = cs_traits)
 
 ## aboveground biomass
-agb_cs_out <- run_models(cs_traits, "agb", model_template_cs, diag_plot = F)
+agb_cs_out <- run_models(cs_traits, "agb", model_template_cs, diag_plot = F, seed = seed)
 ## stem density
-density_cs_out <- run_models(cs_traits, "density", model_template_cs, diag_plot = F)
+density_cs_out <- run_models(cs_traits, "density", model_template_cs, diag_plot = F, seed = seed)
 # Fails to set monitor for sigma.res because there is no residual variation in
 # Poisson regression (aka this warning is ok and expected)
 ## stem height
-height_cs_out <- run_models(cs_traits, "mean_tot_height", model_template_cs, diag_plot = F)
+height_cs_out <- run_models(cs_traits, "mean_tot_height", model_template_cs, diag_plot = F, seed = seed)
 ## stem width
-width_cs_out <- run_models(cs_traits, "mean_mid_width", model_template_cs, diag_plot = F)
+width_cs_out <- run_models(cs_traits, "mean_mid_width", model_template_cs, diag_plot = F, seed = seed)
 ## belowground biomass
-bgb_cs_out <- run_models(cs_traits, "bgb", model_template_cs, diag_plot = F)
+bgb_cs_out <- run_models(cs_traits, "bgb", model_template_cs, diag_plot = F, seed = seed)
 ## root-to-shoot ratio
-rs_cs_out <- run_models(cs_traits, "rs", model_template_cs, diag_plot = F)
+rs_cs_out <- run_models(cs_traits, "rs", model_template_cs, diag_plot = F, seed = seed)
 ## beta (belowground biomass distribution parameter)
-beta_cs_out <- run_models_fixed(cs_traits, "beta", model_template_cs, diag_plot = F)
+beta_cs_out <- run_models_fixed(cs_traits, "beta", model_template_cs, diag_plot = F, seed = seed)
+# Fails to set trace monitor for sigma.int and mu.alpha because this model does
+# not have a random intercept for genotype (and is thus just a fixed effects
+# model). Because provenance and age cohort explain so much of the variation,
+# between-genotype variation is estimated to be zero and was thus dropped from
+# the model.
 
 # Save as R data file objects to use later for plotting and subsequent analyses
 saveRDS(agb_cs_out, here("outputs/corn_sellman_models/", "agb_csmodel.rds"))
@@ -188,13 +212,13 @@ predicted_rs %>%
   rowMeans() -> rs_sellman
 
 # Calculate absolute difference in means
-mean(rs_corn - rs_sellman) # 0.1169472
+mean(rs_corn - rs_sellman) # 0.1130211
 # Calculate 95% credible interval of difference in means
-quantile(rs_corn - rs_sellman, c(0.025, 0.975)) # 0.01495532 0.21376161
+quantile(rs_corn - rs_sellman, c(0.025, 0.975)) # 0.01418939 0.20940235 
 # Calculate mean percent increase from Sellman to Corn
-mean(rs_corn / rs_sellman - 1) # 0.1790472
+mean(rs_corn / rs_sellman - 1) # 0.1723259
 # Calculate 95% credible interval percent increase from Sellman to Corn
-quantile(rs_corn/rs_sellman - 1, c(0.025, 0.975)) # 0.02042893 0.35721248 
+quantile(rs_corn/rs_sellman - 1, c(0.025, 0.975)) # 0.0191938 0.3444169 
 
 # Calculate average predicted root-to-shoot for ancestral cohort
 predicted_rs %>% 
@@ -207,9 +231,9 @@ predicted_rs %>%
   rowMeans() -> rs_modern
 
 # Calculate mean percent decrease from ancestral to modern
-mean((rs_ancestral - rs_modern)/rs_ancestral) # 0.08577855
+mean((rs_ancestral - rs_modern)/rs_ancestral) # 0.08258125
 # Calculate 95% quantile for percent decrease from ancestral to modern
-quantile((rs_ancestral - rs_modern)/rs_ancestral, c(0.025, 0.975)) # -0.04075874  0.19939038  
+quantile((rs_ancestral - rs_modern)/rs_ancestral, c(0.025, 0.975)) # -0.05186102  0.19569098  
 
 
 ## Calculate effect sizes for text: stem width ####
@@ -250,10 +274,9 @@ predicted_widths %>%
   rowMeans() -> widths_modern
 
 # Calculate mean percent decrease from ancestral to modern
-mean((widths_ancestral - widths_modern)/widths_ancestral) # 0.05566921
+mean((widths_ancestral - widths_modern)/widths_ancestral) # 0.05639298
 # Calculate 95% credible interval of percent decrease from ancestral to modern
-quantile((widths_ancestral - widths_modern)/widths_ancestral, c(0.025, 0.975)) # -0.03496703  0.14512516   
-
+quantile((widths_ancestral - widths_modern)/widths_ancestral, c(0.025, 0.975)) # -0.03271603  0.14385558 
 
 ## Calculate effect sizes for text: stem height ####
 
@@ -293,9 +316,9 @@ predicted_heights %>%
   rowMeans() -> heights_sellman
 
 # Calculate mean percent increase from Corn to Sellman
-mean((heights_sellman - heights_corn)/heights_corn) # 0.0297219
+mean((heights_sellman - heights_corn)/heights_corn) # 0.03032149
 # Calculate 95% credible interval percent increase from Corn to Sellman
-quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01462301  0.07517578   
+quantile((heights_sellman - heights_corn)/heights_corn, c(0.025, 0.975)) # -0.01503261  0.07468390   
 
 # Repeat the same process for age
 # Calculate predicted height for ancestral
@@ -309,10 +332,9 @@ predicted_heights %>%
   rowMeans() -> heights_mod
 
 # Calculate mean percent increase from ancestral to modern
-mean((heights_mod - heights_anc)/heights_anc) # 0.003301437
+mean((heights_mod - heights_anc)/heights_anc) # 0.003327307
 # Calculate 95% credible interval percent increase from ancestral to modern
-quantile((heights_mod - heights_anc)/heights_anc, c(0.025, 0.975)) # -0.03760141  0.04386239   
-
+quantile((heights_mod - heights_anc)/heights_anc, c(0.025, 0.975)) # -0.03802610  0.04696763   
 
 
 ## Monoculture vs polyculture analysis ####
@@ -407,7 +429,7 @@ additive_predict <- function(monoculture_ggs){
   return(list(MonoPredict = MonoPredict))
 }
 
-# Run additive function for each trait
+# Run additive function for each trait (each trait will take ~10 seconds to run)
 agb_additive <- additive_predict(ggs(agb_out))
 bgb_additive <- additive_predict(ggs(bgb_out))
 height_additive <- additive_predict(ggs(height_out))
@@ -534,12 +556,14 @@ diffs_by_age_beta <-
   mutate(age = factor(age)) %>% 
   mutate(age = relevel(age, ref = "mix"))
 beta_mod <- lm(`root distribution parameter` ~ age, data = diffs_by_age_beta)
+anova(beta_mod)
 # Get estimate of mean difference between groups
 coef(beta_mod)
 # Get confidence intervals around that difference
 confint(beta_mod)
 
 rs_mod <- lm(`root:shoot ratio` ~ age, data = diffs_by_age)
+anova(rs_mod)
 # Get estimate of mean difference between groups
 coef(rs_mod)
 # Get confidence interval around that difference
@@ -550,8 +574,6 @@ anova(height_mod)
 
 width_mod <- lm(`mean stem width (mm)` ~ age, data = diffs_by_age)
 anova(width_mod) 
-
-
 
 ## Cohort Marsh Equilibrium Model Simulations - All traits vary ####
 
@@ -661,6 +683,8 @@ covar_matrix <- matrix(c(var_biomass, covar_biomass_rs, covar_biomass_beta,
                        nrow = 3, byrow = T)
 
 # Take 1000 draws from this multivariate normal distribution
+# Set seed to keep this consistent with the manuscript
+set.seed(seed)
 samples1 <- rmvnorm(1000, mean = mean_vec, covar_matrix)
 
 # Translate beta values to maximum rooting depth
@@ -694,7 +718,7 @@ carbon_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
 # (i.e. 2100) and also calculate the amount of carbon mass at each timestep. (n
 # = 1000 iterations takes about ~25 minutes running time)
 for (i in 1:n_runs){
-  mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
+  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
                           lunarNodalAmp=0,
@@ -735,17 +759,15 @@ init_elev <- 22.6
 avg_accretion_rates <- (run_store[,80] - init_elev) / 80
 # Calculate interquartile range
 avg_acc_rate_ci <- quantile(avg_accretion_rates, c(0.25, 0.5, 0.75))
-# 25%        50%        75% 
-# 0.06841394 0.08205134 0.09587447
-avg_acc_rate_ci[3]/avg_acc_rate_ci[1] # 40% increase (more than double)
+# Calculate percent increase across quartile range
+avg_acc_rate_ci[3]/avg_acc_rate_ci[1] 
 
 # Calculate CIs around average carbon accumulation rate
 avg_C_accum_rate <- (carbon_store[,80] - carbon_store[,1]) / 80
 # Calculate interquartile range
 avg_C_accum_rate_ci <- quantile(avg_C_accum_rate, c(0.25, 0.5, 0.75))
-#         25%         50%         75% 
-# 0.001908980 0.002413024 0.002916869 
-avg_C_accum_rate_ci[3]/avg_C_accum_rate_ci[1] # 53% increase
+# Calculate percent increase across quartile range
+avg_C_accum_rate_ci[3]/avg_C_accum_rate_ci[1]
 
 # Create a data frame of average accretion rates and carbon accumulation rates
 # from these simulations for plotting later.
@@ -803,7 +825,7 @@ run_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 carbon_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 
 for (i in 1:4){
-  mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
+  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
@@ -886,12 +908,10 @@ cohort_summary %>%
 # Vertical accretion rate
 (summary_rates_provenances[1, "acc_v"]-summary_rates_provenances[2, "acc_v"])/
   summary_rates_provenances[2, "acc_v"]
-# 0.06896516
 
 # Carbon accumulation rate
 (summary_rates_provenances[1, "acc_C"]-summary_rates_provenances[2, "acc_C"])/
   summary_rates_provenances[2, "acc_C"]
-# 0.08708251
 
 # Same for age cohorts
 cohort_summary %>% 
@@ -902,16 +922,15 @@ cohort_summary %>%
 # Vertical accretion rate
 (summary_rates_cohorts[1, "acc_v"]-summary_rates_cohorts[2, "acc_v"])/
   summary_rates_cohorts[2, "acc_v"]
-# 0.190967
 
 # Carbon accumulation rate
 (summary_rates_cohorts[1, "acc_C"]-summary_rates_cohorts[2, "acc_C"])/
   summary_rates_cohorts[2, "acc_C"]
-# 0.2453225
 
 ## Cohort Marsh Equilibrium Model Simulations - AGB varies only ####
 
 # Take draws from normal distribution with just aboveground biomass varying 
+set.seed(seed)
 samples_agb <-rnorm(1000, mean = mean_vec[1], sqrt(var_biomass))
 
 # Translate mean beta value to maximum rooting depth
@@ -939,7 +958,7 @@ carbon_store_agb_only <- matrix(NA, nrow = n_runs, ncol = 100)
 # Run the model for different values of aboveground biomass (n = 1000 iterations
 # takes about ~25 minutes running time)
 for (i in 1:n_runs){
-  mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
+  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = for_MEM_agb_only$`aboveground biomass (g)`[i], 
@@ -965,16 +984,16 @@ for(i in 1:length(samples_agb)){
   lines(run_store_agb_only[i,1:80], col = rgb(0,0,0,0.1))
 }
 
-# Calculate CIs around average accretion rate
+# Calculate CIs around average accretion rate and percent increase
 init_elev <- 22.6
 avg_accretion_rates_agb_only <- (run_store_agb_only[,80] - init_elev) / 80
 avg_acc_rate_ci_agb_only <- quantile(avg_accretion_rates_agb_only, c(0.25, 0.5, 0.75))
-avg_acc_rate_ci_agb_only[3]/avg_acc_rate_ci_agb_only[1] # 23% increase
+avg_acc_rate_ci_agb_only[3]/avg_acc_rate_ci_agb_only[1]
 
-# Calculate CIs around carbon accumulation rate
+# Calculate CIs around carbon accumulation rate and percent increase
 avg_C_accum_rate_agb_only <- (carbon_store_agb_only[,80] - carbon_store_agb_only[,1]) / 80
 avg_C_accum_rate_ci_agb_only <- quantile(avg_C_accum_rate_agb_only, c(0.25, 0.5, 0.75))
-avg_C_accum_rate_ci_agb_only[3]/avg_C_accum_rate_ci_agb_only[1] # 29% increase 
+avg_C_accum_rate_ci_agb_only[3]/avg_C_accum_rate_ci_agb_only[1]
 
 # Allow just agb to vary - vary due to cohort 
 run_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
@@ -982,7 +1001,7 @@ carbon_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
 
 # For root:shoot and rooting depth, take means across cohorts
 for (i in 1:4){
-  mem_out <- runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
+  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=-1.6,
                           meanHighWaterDatum=12.9, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
@@ -999,16 +1018,6 @@ for (i in 1:4){
     group_by(year) %>% 
     summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store_cohort_agb_only[i,]
   print(i)
-}
-
-# Quick plot
-par(mar = c(4,4,2,2))
-plot(run_store_cohort_agb_only[1,1:80], type = "n", ylim = c(22.6,30), xlab = "time forward (years)",
-     ylab = "marsh elevation (cm)")
-for(i in 1:4){
-  lines(run_store_cohort_agb_only[i,1:80], col = c(colors[1], colors[4], colors[1], colors[4])[i])
-  points(run_store_cohort_agb_only[i,1:80], pch = c(16, 16, 17, 17)[i],
-         col = c(colors[1], colors[4], colors[1], colors[4])[i])
 }
 
 # Calculate average accretion rate
@@ -1045,8 +1054,6 @@ CMEM_predictions_agb_only %>%
   summarize(mean = mean(value),
             lower = quantile(value, 0.025),
             upper = quantile(value, 0.975))
-# mean lower upper
-# 29.1  27.6  31.0
 
 # Save output from both simulations for plotting later
 write_rds(CMEM_predictions_belowground, here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))

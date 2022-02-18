@@ -1,4 +1,4 @@
-# Figure 3 - Belowground Evolution
+# Figure 2 - Belowground Evolution
 
 # Figure caption: 
 

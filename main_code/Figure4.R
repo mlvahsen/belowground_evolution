@@ -1,26 +1,5 @@
 # Belowground evolution Figure 4
 
-# Figure caption: Within-species variation in S. americanus functional traits
-# has significant consequences for wetland ecosystem structure and function. (A)
-# Using a previously published model, the Cohort Marsh Equilibrium Model (CMEM;
-# Morris et al. 2002, Vahsen et al. in prep), we simulated marsh elevation gain
-# 80 years into the future to the year 2100. Light grey lines represent model
-# simulations (n = 1000) that account for variation due to genotype in
-# aboveground biomass, root-shoot-ratio, and maximum rooting depth. Green and
-# pink lines represent mean predictions for ecotypes from Corn Island (green)
-# and Sellman Creek (pink), respectively, while shapes at year = 2100 represent
-# age cohorts (circle = modern, triangle = ancestral). (B) Average vertical
-# accretion rate across 80 years explained by variation in traits due to
-# genotype (histogram) and due to average ecotype and age cohort trait values
-# (points). (C) Average carbon accumulation rate across 80 years explained by
-# variation in traits due to genotype (histogram) and due to average ecotype and
-# age cohort trait values (points). (D) Simulations of CMEM that account for
-# variation in aboveground biomass due to genotype (grey lines), ecotype (green
-# vs. pink), and age cohort (circle vs. triangle). (E) Distribution of final
-# predicted elevation of CMEM simulations for scenarios in which aboveground and
-# belowground traits were varied (left; from A) and for which only aboveground
-# biomass was varied (right; from D).
-
 ## Preliminaries ####
 
 # Load libraries

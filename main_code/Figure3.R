@@ -304,4 +304,4 @@ list(prop_biomass,
 sapply(all_props, function(x) sum(x[1:3])) -> all_genotype_prop
 range(all_genotype_prop)
 # Not accounting for within-species variation results in missing out on
-# explaining 10.3-52.2% of observed variation in traits
+# explaining 16.5-52.6% of observed variation in traits
