@@ -46,7 +46,7 @@ locations <- tibble(id = c("Corn Island", "Hog Island", "Kirkpatrick Marsh", "Se
 
 # Create map with scale-bar and N arrow
 sbbox <- c(left = -76.555, bottom = 38.87, right = -76.53, top = 38.898)
-map <- ggmap(get_stamenmap(sbbox, zoom = 16, maptype = "toner-background")) +
+map <- ggmap(get_stamenmap(sbbox, zoom = 16, maptype = "terrain-background")) +
   geom_point(data = locations, aes(x = longitude, y = latitude, color = id), size = 5) +
   scale_color_manual(values = colors) +
   geom_label_repel(data = locations,
@@ -57,7 +57,7 @@ map <- ggmap(get_stamenmap(sbbox, zoom = 16, maptype = "toner-background")) +
            y.min = 38.871,  y.max = 38.872,
            dist = 0.5, transform = TRUE, 
            model = "WGS84", height = 0.3, 
-           st.dist = 0.5, dist_unit = "km", st.size = 4, ) +
+           st.dist = 0.5, dist_unit = "km", st.size = 4) +
   xlab("Longitude") +
   ylab("Latitude") + theme_bw() + theme(legend.position = "none")
 
@@ -78,6 +78,7 @@ for_seed_depths %>%
   pull(depth_seed) -> unique_depths
 
 # Get random draws for regression coefficients relating seed depth to seed age
+set.seed(1234)
 beta_draws <- rmvnorm(1000, seed_age_priors$beta_prior_mean, seed_age_priors$beta_prior_covar)
 sigma_draws <- rgamma(1000, seed_age_priors$sigma_prior$alpha, seed_age_priors$sigma_prior$beta)
 
@@ -109,7 +110,7 @@ pred_age_long %>%
 # Calculate predicted decade based on seed ages for supplemental table (Table
 # S1)
 pred_age_summary_stat %>% 
-  mutate(pred_year = round(2016 - median, - 1)) -> TableS1
+  mutate(pred_year = round(2016 - median)) -> TableS1
 
 write_csv(TableS1, here("figs_tables", "TableS1.csv"))
 
