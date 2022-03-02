@@ -42,11 +42,9 @@ mono_traits <- all_traits %>%
 ## Source JAGS functions to fit (generalized) linear mixed models ####
 source("main_code/jags_fxns.R")
 
-
 ## Create a model template that JAGS will use the model matrix for ####
 model_template_mono <- lmer(agb ~ ln_depth + ic_weight + frame +
                          (1|genotype), data = mono_traits)
-
 
 ## Set MCMC specifications ####
 n.iter <- 10000
@@ -172,7 +170,6 @@ saveRDS(width_cs_out, here("outputs/corn_sellman_models/", "width_csmodel.rds"))
 saveRDS(height_cs_out, here("outputs/corn_sellman_models/", "height_csmodel.rds"))
 saveRDS(bgb_cs_out, here("outputs/corn_sellman_models/", "bgb_csmodel.rds"))
 saveRDS(density_cs_out, here("outputs/corn_sellman_models/", "density_csmodel.rds"))
-
 
 ## Calculate effect sizes for text: root-to-shoot ####
 
@@ -462,6 +459,9 @@ average_difference <- function(trait, additive_samples){
     pot_trait_temp <- poly_traits %>%
       filter(pot == j) %>%
       select(trait) %>% as.numeric()
+    # This is put in place to make sure that the one pot (39) does not get a
+    # beta calculated and it would stand out numerically if it did (i.e. why the
+    # temp value is 10000)
     if(trait == "beta" & is.na(pot_trait_temp)){
       pot_trait_temp <- 10000
     }
@@ -470,6 +470,7 @@ average_difference <- function(trait, additive_samples){
     # values mean that what we observed was less than the additive expectation, so
     # NEGATIVE = COMPETITION)
     if(trait == "density"){
+      # Predicted values from the poisson regression are on the log-scale
       pred_obs_diff[,j] <- log(pot_trait_temp) - additive_samples$MonoPredict[,j]
     }else{
       pred_obs_diff[,j] <- pot_trait_temp - additive_samples$MonoPredict[,j]
@@ -479,6 +480,7 @@ average_difference <- function(trait, additive_samples){
   # Then take a mean across all 48 pots for each iteration to get the mean
   # effect (for beta make sure to skip pot 39)
   if(trait == "beta"){
+    # Take out pot 39 which has an NA for the observed beta
     average_difference <- rowMeans(pred_obs_diff[,c(1:38,40:48)])
   }else{
     average_difference <- rowMeans(pred_obs_diff)
@@ -497,6 +499,7 @@ mean_difference_bypot <- function(trait, additive_samples){
   difference <- matrix(0, nrow = nrow(additive_samples$MonoPredict), ncol = ncol(additive_samples$MonoPredict))
   
   if(trait == "density"){
+    # Predicted values from the poisson regression are on the log-scale
     for (i in 1:nrow(additive_samples$MonoPredict)){
       difference[i,] <- log(observed) - additive_samples$MonoPredict[i,]
     }
@@ -531,6 +534,9 @@ tibble(poly_traits) %>%
          `belowground biomass (g)` = diffs_bgb$x,
          `root:shoot ratio` = diffs_rs$x,
          `root distribution parameter` = diffs_beta$x) %>%
+  # Set the "make-up" of the pot. Pots 1-18 are mixes of four ancestral
+  # genotypes, 19-30 are mixes of four descendant genotypes, and 31-48 are mixes
+  # of two ancestral and two descendant genotypes.
   mutate(age = case_when(pot %in% 1:18 ~ "ancestral",
                          pot %in% 19:30 ~ "modern",
                          T ~ "mix")) %>%
@@ -540,7 +546,10 @@ tibble(poly_traits) %>%
 # Save table for later
 saveRDS(diffs_by_age, here("outputs/monoculture_polyculture/", "diffs_by_age.rds"))
 
-# Check to see if there are significant differences by age group
+# Check to see if there are significant differences by age group. The response
+# variable here is the scaled difference (difference between obs and pred trait
+# values) and the predictor variable is age cohort (ancestral, descendant or
+# mixed)
 abg_mod <- lm(`aboveground biomass (g)` ~ age, data = diffs_by_age)
 anova(abg_mod) 
 
@@ -582,7 +591,7 @@ anova(width_mod)
 # Parameter estimates for bMax and root:shoot from Blue Genes 2019 experiment
 blue_genes <- read_rds(here("supp_data", "blue_genes_subdata.rds"))
 
-# Fit a parabola for the aboveground biomass data
+# Fit a parabola for the aboveground biomass data from Blue Genes experiment
 quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes)
 # Extract quadratic regression coefficients
 coefs <- as.numeric(coef(quad_mod))
@@ -602,13 +611,14 @@ roots <- quadraticRoots(coefs[3], coefs[2], coefs[1])
 zMax_for_sim <- roots[2]
 zMin_for_sim <- roots[1]
 
-# Find peak biomass given a symmetric parabola
+# Find elevation where peak biomass is given a symmetric parabola
 zPeak <- (zMax_for_sim + zMin_for_sim) / 2
 
 # Calculate the predicted biomass at that elevation (bMax)
 bMax <- predict(quad_mod, newdata = data.frame(elevation = zPeak))
-# Convert to g / cm2
+# Convert to g / cm2 (4 inch diameter pots = 2 inch radius = 5.08 cm radius)
 pot_area_cm2 <- pi * 5.08^2
+# Get to the scales used in CMEM (g/cm2)
 bMax_for_sim <- bMax / pot_area_cm2
 
 # Calculate average root-to-shoot ratio (Note: CMEM assumes static root-to-shoot
@@ -645,11 +655,11 @@ beta_sum <- get_cv(read_rds(here("outputs/monoculture_models/", "beta_monomodel.
 mean_vec <- c(bMax_for_sim, rootShoot_for_sim, beta_sum$mu.alpha)
 
 # Scale biomass to g/cm^2
+# Our pots were 6 inches in diameter, 3 inches radius, 7.62 cm radius
 pot_area <- 7.62^2*pi
 biomass_sum %>% 
   mutate(mu.alpha.scaled = mu.alpha / pot_area,
          sigma.int.scaled = sigma.int / pot_area) -> biomass_sum
-
 
 ##
 # All variation - vary due to genotype 
@@ -737,7 +747,8 @@ for (i in 1:n_runs){
                           recalcitrantFrac=0.2, captureRate = 2.8)
   run_store[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
-  # Calculate amount of carbon at each time step
+  # Calculate amount of carbon at each time step. This follows the %C
+  # calculation from Craft et al. 1991
   mem_out$cohorts %>% 
     mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
            perc_C = 0.4*loi + 0.0025*loi^2,
@@ -747,27 +758,12 @@ for (i in 1:n_runs){
   print(i)
 }
 
-par(mar = c(4,4,2,2))
-plot(run_store[1,1:80], type = "n", ylim = c(22.6,35), xlab = "time forward (years)",
-     ylab = "marsh elevation (cm)")
-for(i in 1:n_runs){
-  lines(run_store[i,1:80], col = rgb(0,0,0,0.2))
-}
-
-# Calculate CIs around average accretion rate
+# Calculate average accretion rate for each iteration
 init_elev <- 22.6
 avg_accretion_rates <- (run_store[,80] - init_elev) / 80
-# Calculate interquartile range
-avg_acc_rate_ci <- quantile(avg_accretion_rates, c(0.25, 0.5, 0.75))
-# Calculate percent increase across quartile range
-avg_acc_rate_ci[3]/avg_acc_rate_ci[1] 
 
-# Calculate CIs around average carbon accumulation rate
+# Calculate average carbon accumulation rate for each iteration
 avg_C_accum_rate <- (carbon_store[,80] - carbon_store[,1]) / 80
-# Calculate interquartile range
-avg_C_accum_rate_ci <- quantile(avg_C_accum_rate, c(0.25, 0.5, 0.75))
-# Calculate percent increase across quartile range
-avg_C_accum_rate_ci[3]/avg_C_accum_rate_ci[1]
 
 # Create a data frame of average accretion rates and carbon accumulation rates
 # from these simulations for plotting later.
@@ -784,7 +780,9 @@ write_rds(avg_rates, here("outputs/CMEM_runs", "CMEM_rates_full.rds"))
 cs_traits <- mono_traits %>% filter(location %in% c('corn', "sellman"))
 
 # Fit linear mixed models and extract predicted means. Then scale by the same
-# factor for biomass and root-to-shoot ratio as in the previous simulations.
+# factor for biomass and root-to-shoot ratio as in the previous simulations. The
+# mean predicted values from lmer will be basically identical to those
+# calculated in JAGS.
 
 # Root:shoot
 rs_mod_formeans <- lmer(rs ~ frame + ic_weight + ln_depth + location + age + (1|genotype), data = cs_traits)
@@ -859,6 +857,7 @@ avg_C_accum_rate_cohort <- (carbon_store_cohort[,80] - carbon_store_cohort[,1]) 
 tibble(location = c("corn", "sellman", "corn", "sellman"),
        age = c("ancestral", "ancestral", "modern", "modern"),
        acc_v = avg_accretion_rates_cohort * 10,
+       # unit conversion for carbon accumulation 
        acc_C = avg_C_accum_rate_cohort * 1e-6 / 1e-8) -> cohort_summary
 
 write_rds(cohort_summary, here("outputs/CMEM_runs", "CMEM_rates_full_cohort.rds"))
@@ -977,23 +976,12 @@ for (i in 1:n_runs){
   print(i)
 }
 
-par(mar = c(4,4,2,2))
-plot(run_store_agb_only[1,1:80], type = "n", ylim = c(22.6,35), xlab = "time forward (years)",
-     ylab = "marsh elevation (cm)")
-for(i in 1:length(samples_agb)){
-  lines(run_store_agb_only[i,1:80], col = rgb(0,0,0,0.1))
-}
-
-# Calculate CIs around average accretion rate and percent increase
+# Calculate average accretion rates at each iteration
 init_elev <- 22.6
 avg_accretion_rates_agb_only <- (run_store_agb_only[,80] - init_elev) / 80
-avg_acc_rate_ci_agb_only <- quantile(avg_accretion_rates_agb_only, c(0.25, 0.5, 0.75))
-avg_acc_rate_ci_agb_only[3]/avg_acc_rate_ci_agb_only[1]
 
-# Calculate CIs around carbon accumulation rate and percent increase
+# Calculate average carbon accumulation rates at each iteration
 avg_C_accum_rate_agb_only <- (carbon_store_agb_only[,80] - carbon_store_agb_only[,1]) / 80
-avg_C_accum_rate_ci_agb_only <- quantile(avg_C_accum_rate_agb_only, c(0.25, 0.5, 0.75))
-avg_C_accum_rate_ci_agb_only[3]/avg_C_accum_rate_ci_agb_only[1]
 
 # Allow just agb to vary - vary due to cohort 
 run_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
