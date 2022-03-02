@@ -42,7 +42,7 @@ calculate_prop_var <- function(coda_object, trait, model_template){
   if(trait == "density"){
     ggs(coda_object) %>% 
       spread(key = Parameter, value = value) %>%
-      mutate(sigma2.res = log(1 + 1/exp(mu.alpha))) %>% 
+      mutate(sigma2.res = log(1 + 1/mean(cs_traits$density))) %>% 
       mutate(sigma2.int = sigma.int^2) %>% 
       dplyr::select(sigma2.res, sigma2.int) -> sigma_out
   }else{
