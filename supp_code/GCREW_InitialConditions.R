@@ -3,11 +3,11 @@
 # of propagules in pots           #
 # ------------------------------- #
 
-library(here)
+library(here); library(tidyverse)
 
 # Read in data
-pot_level <- read.csv(here("supp_data/", "InitialConditions.csv"))
-weights <- read.csv(here("supp_data/", "PropaguleWeights.csv"))
+pot_level <- read_csv(here("supp_data/", "InitialConditions.csv"))
+weights <- read_csv(here("supp_data/", "PropaguleWeights.csv"))
 
 head(pot_level)
 head(weights)
@@ -16,7 +16,7 @@ head(weights)
 weights$Id <- as.character(interaction(weights$Site, weights$Layer, sep = ""))
 
 # Create stem id variable for both datasets
-weights$stemid <- as.character(interaction(weights$Id, weights$New.ID, sep = "_"))
+weights$stemid <- as.character(interaction(weights$Id, weights$`New ID`, sep = "_"))
 pot_level$stemid <- as.character(interaction(pot_level$Id, pot_level$Number, sep = "_"))
 
 # Number of unique stem ids: should be 384 (384 stems / 96 pots)
