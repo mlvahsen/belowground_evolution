@@ -334,6 +334,60 @@ mean((heights_mod - heights_anc)/heights_anc) # 0.003327307
 quantile((heights_mod - heights_anc)/heights_anc, c(0.025, 0.975)) # -0.03802610  0.04696763   
 
 
+
+## Collect predicted means for aboveground biomass for CMEM analysis ####
+# Collect MCMC samples for all regression coefficients from root-to-shoot model
+ggs(agb_cs_out) %>% 
+  filter(substr(Parameter, 1, 4) == "beta" | substr(Parameter, 1, 5) == "mu.al") %>% 
+  spread(key = Parameter, value = value) -> agb_betas
+
+# Because weight ic_weight and ln_depth were centered, their mean = 0 so they
+# don't need to be included in the predicted equation
+agb_betas %>% 
+  mutate(frame1.age1.loc1.pred = mu.alpha + `beta[3]`,
+         frame1.age1.loc2.pred = mu.alpha + `beta[3]` + `beta[6]`,
+         frame1.age2.loc1.pred = mu.alpha + `beta[3]` + `beta[7]`,
+         frame1.age2.loc2.pred = mu.alpha + `beta[3]` + `beta[6]` + `beta[7]`,
+         frame2.age1.loc1.pred = mu.alpha + `beta[4]`,
+         frame2.age1.loc2.pred = mu.alpha + `beta[4]` + `beta[6]`,
+         frame2.age2.loc1.pred = mu.alpha + `beta[4]` + `beta[7]`,
+         frame2.age2.loc2.pred = mu.alpha + `beta[4]` + `beta[6]` + `beta[7]`,
+         frame3.age1.loc1.pred = mu.alpha + `beta[5]`,
+         frame3.age1.loc2.pred = mu.alpha + `beta[5]` + `beta[6]`,
+         frame3.age2.loc1.pred = mu.alpha + `beta[5]` + `beta[7]`,
+         frame3.age2.loc2.pred = mu.alpha + `beta[5]` + `beta[6]` + `beta[7]`,
+         frame4.age1.loc1.pred = mu.alpha,
+         frame4.age1.loc2.pred = mu.alpha + `beta[6]`,
+         frame4.age2.loc1.pred = mu.alpha + `beta[7]`,
+         frame4.age2.loc2.pred = mu.alpha + `beta[6]` + `beta[7]`) -> predicted_agb
+
+## Collect predicted means for root distribution parameter for CMEM analysis ####
+# Collect MCMC samples for all regression coefficients from root-to-shoot model
+ggs(beta_cs_out) %>% 
+  filter(substr(Parameter, 1, 4) == "beta" | substr(Parameter, 1, 5) == "alpha") %>% 
+  spread(key = Parameter, value = value) -> beta_betas
+
+# Because weight ic_weight and ln_depth were centered, their mean = 0 so they
+# don't need to be included in the predicted equation
+beta_betas %>% 
+  mutate(frame1.age1.loc1.pred = alpha + `beta[3]`,
+         frame1.age1.loc2.pred = alpha + `beta[3]` + `beta[6]`,
+         frame1.age2.loc1.pred = alpha + `beta[3]` + `beta[7]`,
+         frame1.age2.loc2.pred = alpha + `beta[3]` + `beta[6]` + `beta[7]`,
+         frame2.age1.loc1.pred = alpha + `beta[4]`,
+         frame2.age1.loc2.pred = alpha + `beta[4]` + `beta[6]`,
+         frame2.age2.loc1.pred = alpha + `beta[4]` + `beta[7]`,
+         frame2.age2.loc2.pred = alpha + `beta[4]` + `beta[6]` + `beta[7]`,
+         frame3.age1.loc1.pred = alpha + `beta[5]`,
+         frame3.age1.loc2.pred = alpha + `beta[5]` + `beta[6]`,
+         frame3.age2.loc1.pred = alpha + `beta[5]` + `beta[7]`,
+         frame3.age2.loc2.pred = alpha + `beta[5]` + `beta[6]` + `beta[7]`,
+         frame4.age1.loc1.pred = alpha,
+         frame4.age1.loc2.pred = alpha + `beta[6]`,
+         frame4.age2.loc1.pred = alpha + `beta[7]`,
+         frame4.age2.loc2.pred = alpha + `beta[6]` + `beta[7]`) -> predicted_beta
+
+
 ## Monoculture vs polyculture analysis ####
 
 # Create a dataset with just polycultures
@@ -779,32 +833,81 @@ write_rds(avg_rates, here("outputs/CMEM_runs", "CMEM_rates_full.rds"))
 # Subset data for just corn and sellman locations
 cs_traits <- mono_traits %>% filter(location %in% c('corn', "sellman"))
 
-# Fit linear mixed models and extract predicted means. Then scale by the same
-# factor for biomass and root-to-shoot ratio as in the previous simulations. The
-# mean predicted values from lmer will be basically identical to those
-# calculated in JAGS.
+# Calculate predicted means from cs models for each provenance x cohort
+# combination for rs
 
-# Root:shoot
-rs_mod_formeans <- lmer(rs ~ frame + ic_weight + ln_depth + location + age + (1|genotype), data = cs_traits)
-# Extract means: order is corn-ancestral, sellman-ancestral, corn-modern,
+predicted_rs %>% 
+  select(contains("loc1") & contains("age1")) %>% 
+  rowMeans() %>% mean() -> mean_rs_ca
+  
+predicted_rs %>% 
+  select(contains("loc2") & contains("age1")) %>% 
+  rowMeans() %>% mean() -> mean_rs_sa
+
+predicted_rs %>% 
+  select(contains("loc1") & contains("age2")) %>% 
+  rowMeans() %>% mean() -> mean_rs_cm
+
+predicted_rs %>% 
+  select(contains("loc2") & contains("age2")) %>% 
+  rowMeans() %>% mean() -> mean_rs_sm
+  
+# Put means in vector: order is corn-ancestral, sellman-ancestral, corn-modern,
 # sellman-modern
-means_rs <- summary(emmeans(rs_mod_formeans, ~ location:age))$emmean
+means_rs <- c(mean_rs_ca, mean_rs_sa, mean_rs_cm, mean_rs_sm)
 # Scale based on blue genes means
 bg_rs_scale <- rootShoot_for_sim / mean(means_rs)
 root_shoot_cohort_forMEM <- means_rs * bg_rs_scale
 
-# Biomass
-agb_mod_formeans <- lmer(agb ~ ic_weight + frame + ln_depth + location + age + (1|genotype), data = cs_traits)
-# Extract means and convert to g/cm2
-means_agb <- summary(emmeans(agb_mod_formeans, ~ location:age))$emmean / pot_area
+# Calculate predicted means from cs models for each provenance x cohort
+# combination for agb
+
+predicted_agb %>% 
+  select(contains("loc1") & contains("age1")) %>% 
+  rowMeans() %>% mean() -> mean_agb_ca
+
+predicted_agb %>% 
+  select(contains("loc2") & contains("age1")) %>% 
+  rowMeans() %>% mean() -> mean_agb_sa
+
+predicted_agb %>% 
+  select(contains("loc1") & contains("age2")) %>% 
+  rowMeans() %>% mean() -> mean_agb_cm
+
+predicted_agb %>% 
+  select(contains("loc2") & contains("age2")) %>% 
+  rowMeans() %>% mean() -> mean_agb_sm
+
+# Put means in vector: order is corn-ancestral, sellman-ancestral, corn-modern,
+# sellman-modern and convert to g/cm2
+means_agb <- c(mean_agb_ca, mean_agb_sa, mean_agb_cm, mean_agb_sm)/ pot_area
+
 # Scale based on blue genes means
 bg_agb_scale <- bMax_for_sim / mean(means_agb)
 agb_cohort_forMEM <- means_agb * bg_agb_scale
 
-# Root distribution parameter
-beta_mod_formeans <- lm(beta ~ frame + ic_weight + ln_depth + location + age, data = cs_traits)
-means_betas <- summary(emmeans(beta_mod_formeans, ~ location:age))$emmean
+# Calculate predicted means from cs models for each provenance x cohort
+# combination for root distribution parameter (beta)
 
+predicted_beta %>% 
+  select(contains("loc1") & contains("age1")) %>% 
+  rowMeans() %>% mean() -> mean_beta_ca
+
+predicted_beta %>% 
+  select(contains("loc2") & contains("age1")) %>% 
+  rowMeans() %>% mean() -> mean_beta_sa
+
+predicted_beta %>% 
+  select(contains("loc1") & contains("age2")) %>% 
+  rowMeans() %>% mean() -> mean_beta_cm
+
+predicted_beta %>% 
+  select(contains("loc2") & contains("age2")) %>% 
+  rowMeans() %>% mean() -> mean_beta_sm
+
+# Put means in vector: order is corn-ancestral, sellman-ancestral, corn-modern,
+# sellman-modern and convert to g/cm2
+means_betas <- c(mean_beta_ca, mean_beta_sa, mean_beta_cm, mean_beta_sm)
 # Translate beta values to maximum rooting depth
 depth_interval <- seq(0,50,length.out = 1000)
 rooting_depth <- NULL
