@@ -334,7 +334,6 @@ mean((heights_mod - heights_anc)/heights_anc) # 0.003327307
 quantile((heights_mod - heights_anc)/heights_anc, c(0.025, 0.975)) # -0.03802610  0.04696763   
 
 
-
 ## Collect predicted means for aboveground biomass for CMEM analysis ####
 # Collect MCMC samples for all regression coefficients from root-to-shoot model
 ggs(agb_cs_out) %>% 
