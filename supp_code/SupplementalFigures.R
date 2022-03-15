@@ -403,7 +403,7 @@ tibble(cohort = mono_traits$`age cohort`,
   facet_wrap(~trait, scales = "free_y", nrow = 2) + 
   scale_color_manual(values = colors) +
   ylab("trait value") +
-  xlab("") + theme_bw() 
+  xlab("") + theme_bw() -> FigS7
 
 png(here("figs_tables", "FigureS7_allTraitsRaw.png"), height = 4, width = 10,
     res = 300, units = "in")
