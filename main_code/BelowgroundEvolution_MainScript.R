@@ -28,6 +28,7 @@ library(here); library(rCMEM); library(mvtnorm); library(emmeans)
 
 # Source in initial conditions (genotypes and wet weights)
 source(here("supp_code", "GCREW_InitialConditions.R"))
+# Read in compiled trait data
 all_traits <- read_csv(here("data", "CompiledTraitData.csv"))
 
 # Set all factors
@@ -61,7 +62,7 @@ seed <- 1234
 agb_out <- run_models(mono_traits, "agb", model_template_mono, diag_plot = F, seed = seed)
 ## stem density
 density_out <- run_models(mono_traits, "density", model_template_mono, diag_plot = F, seed = seed)
-# Fails to set monitor for sigma.res because there is no residual variation in
+# Fails to set monitor for sigma.res because there is no residual variation in a
 # Poisson regression (aka this warning is ok and expected)
 ## stem height
 height_out <- run_models(mono_traits, "mean_tot_height", model_template_mono, diag_plot = F, seed = seed)
@@ -74,7 +75,8 @@ rs_out <- run_models(mono_traits, "rs", model_template_mono, diag_plot = F, seed
 ## beta (belowground biomass distribution parameter)
 beta_out <- run_models(mono_traits, "beta", model_template_mono, diag_plot = F, seed = seed)
 
-# Save as R data file objects to use later for plotting and subsequent analyses
+# Save results as R data file objects to use later for plotting and subsequent
+# analyses
 saveRDS(agb_out, here("outputs/monoculture_models", "agb_monomodel.rds"))
 saveRDS(rs_out, here("outputs/monoculture_models", "rs_monomodel.rds"))
 saveRDS(bgb_out, here("outputs/monoculture_models", "bgb_monomodel.rds"))
@@ -144,7 +146,7 @@ model_template_cs <- lmer(agb ~ ln_depth + ic_weight + frame +
 agb_cs_out <- run_models(cs_traits, "agb", model_template_cs, diag_plot = F, seed = seed)
 ## stem density
 density_cs_out <- run_models(cs_traits, "density", model_template_cs, diag_plot = F, seed = seed)
-# Fails to set monitor for sigma.res because there is no residual variation in
+# Fails to set monitor for sigma.res because there is no residual variation in a
 # Poisson regression (aka this warning is ok and expected)
 ## stem height
 height_cs_out <- run_models(cs_traits, "mean_tot_height", model_template_cs, diag_plot = F, seed = seed)
@@ -231,7 +233,6 @@ predicted_rs %>%
 mean((rs_ancestral - rs_modern)/rs_ancestral) # 0.08258125
 # Calculate 95% quantile for percent decrease from ancestral to modern
 quantile((rs_ancestral - rs_modern)/rs_ancestral, c(0.025, 0.975)) # -0.05186102  0.19569098  
-
 
 ## Calculate effect sizes for text: stem width ####
 
@@ -333,9 +334,12 @@ mean((heights_mod - heights_anc)/heights_anc) # 0.003327307
 # Calculate 95% credible interval percent increase from ancestral to modern
 quantile((heights_mod - heights_anc)/heights_anc, c(0.025, 0.975)) # -0.03802610  0.04696763   
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> f0642c79ee8467573152354081570e65c94a7ffc
 ## Collect predicted means for aboveground biomass for CMEM analysis ####
-# Collect MCMC samples for all regression coefficients from root-to-shoot model
+# Collect MCMC samples for all regression coefficients from agb model
 ggs(agb_cs_out) %>% 
   filter(substr(Parameter, 1, 4) == "beta" | substr(Parameter, 1, 5) == "mu.al") %>% 
   spread(key = Parameter, value = value) -> agb_betas
@@ -361,7 +365,9 @@ agb_betas %>%
          frame4.age2.loc2.pred = mu.alpha + `beta[6]` + `beta[7]`) -> predicted_agb
 
 ## Collect predicted means for root distribution parameter for CMEM analysis ####
-# Collect MCMC samples for all regression coefficients from root-to-shoot model
+
+# Collect MCMC samples for all regression coefficients from root distribution
+# parameter model
 ggs(beta_cs_out) %>% 
   filter(substr(Parameter, 1, 4) == "beta" | substr(Parameter, 1, 5) == "alpha") %>% 
   spread(key = Parameter, value = value) -> beta_betas
@@ -385,7 +391,6 @@ beta_betas %>%
          frame4.age1.loc2.pred = alpha + `beta[6]`,
          frame4.age2.loc1.pred = alpha + `beta[7]`,
          frame4.age2.loc2.pred = alpha + `beta[6]` + `beta[7]`) -> predicted_beta
-
 
 ## Monoculture vs polyculture analysis ####
 
@@ -512,9 +517,9 @@ average_difference <- function(trait, additive_samples){
     pot_trait_temp <- poly_traits %>%
       filter(pot == j) %>%
       select(trait) %>% as.numeric()
-    # This is put in place to make sure that the one pot (39) does not get a
-    # beta calculated and it would stand out numerically if it did (i.e. why the
-    # temp value is 10000)
+    # This (below) is put in place to make sure that the one pot (39) does not
+    # get a beta calculated and it would stand out numerically if it did (i.e.
+    # why the temp value is 10000)
     if(trait == "beta" & is.na(pot_trait_temp)){
       pot_trait_temp <- 10000
     }
@@ -542,7 +547,7 @@ average_difference <- function(trait, additive_samples){
 }
 
 ## Differences by age cohort: Calculate differences at each iteration for each
-## pot. This is for figure 2b and supplemental figs.
+## pot. This is for figure 3b and supplemental figs.
 mean_difference_bypot <- function(trait, additive_samples){
   # Predicted values for each polyculture pot (row = iterations, col = pots)
   observed <- pull(poly_traits[,trait])
@@ -1141,9 +1146,17 @@ tibble(elevation_store_withcohorts_agb_only) %>%
 # Calculate uncertainty at year 2100 for agb only
 CMEM_predictions_agb_only %>% 
   filter(year == 2100) %>% 
-  summarize(mean = mean(value),
-            lower = quantile(value, 0.025),
-            upper = quantile(value, 0.975))
+  pull(value) %>% 
+  var() -> var_2100_elev_agb
+
+# Calculate the same for full model
+CMEM_predictions_belowground %>% 
+  filter(year == 2100) %>% 
+  pull(value) %>% 
+  var() -> var_2100_elev_agbg
+
+# Calculate percent decrease in variation
+(var_2100_elev_agbg - var_2100_elev_agb)/var_2100_elev_agbg
 
 # Save output from both simulations for plotting later
 write_rds(CMEM_predictions_belowground, here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))
