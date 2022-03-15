@@ -397,13 +397,13 @@ tibble(cohort = mono_traits$`age cohort`,
   stat_summary(fun.data = mean_cl_boot, geom = "errorbar", 
                colour = "black", width = 0.1, 
                position=position_nudge(x = 0.3)) +
-  stat_summary(fun = mean, geom = "point", 
+  stat_summary(fun = "mean", geom = "point", 
                size = 3, aes(color = provenance, shape = cohort),
                position=position_nudge(x = 0.3)) + 
   facet_wrap(~trait, scales = "free_y", nrow = 2) + 
   scale_color_manual(values = colors) +
   ylab("trait value") +
-  xlab("") + theme_bw() -> FigS7
+  xlab("") + theme_bw() 
 
 png(here("figs_tables", "FigureS7_allTraitsRaw.png"), height = 4, width = 10,
     res = 300, units = "in")
