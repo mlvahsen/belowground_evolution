@@ -474,7 +474,7 @@ blue_genes %>%
   geom_vline(aes(xintercept = zMin_for_sim*100), linetype = "dotted", col = "darkgreen", size = 1.5)+
   geom_vline(aes(xintercept = zMax_for_sim*100), linetype = "dotted", col = "darkgreen", size = 1.5) +
   ylim(0, 0.22) +
-  ylab(expression(paste("aboveground biomass (g/", m^2, ")"))) +
+  ylab(expression(paste("aboveground biomass (g/", cm^2, ")"))) +
   xlab("elevation (cm NAVD88)") +
   geom_point(aes(x = (zMin_for_sim*100 + zMax_for_sim*100)/2, y = bMax_for_sim), size = 5, color = "purple")+
   geom_point(aes(x = zMin_for_sim*100, y = 0), size = 5, color = "darkgreen") + 
