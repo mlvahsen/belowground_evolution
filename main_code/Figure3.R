@@ -91,11 +91,12 @@ diffs_by_age %>%
   mutate(age = case_when(age == "modern" ~ "descendant",
                          T ~ age)) %>% 
   mutate(age = factor(age, levels = c("ancestral", "mix", "descendant"))) %>% 
-  select(age, `root:shoot ratio`) %>% 
+  dplyr::select(age, `root:shoot ratio`) %>% 
   ggplot(aes(x = age, y = `root:shoot ratio`)) +
   geom_boxplot(outlier.shape = NA, color = "#fb9a99") +
   geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#fb9a99") +
   scale_shape_manual(values = c(16,8,17)) +
+  geom_hline(aes(yintercept = 0), linetype = "dashed") +
   xlab("age cohort") +
   ylab("root:shoot (scaled diff)") +
   theme_bw() +
@@ -106,10 +107,11 @@ diffs_by_age %>%
   mutate(age = case_when(age == "modern" ~ "descendant",
                          T ~ age)) %>%
   mutate(age = factor(age, levels = c("ancestral", "mix", "descendant"))) %>% 
-  select(age, `root distribution parameter`) %>% 
+  dplyr::select(age, `root distribution parameter`) %>% 
   ggplot(aes(x = age, y = `root distribution parameter`)) +
   geom_boxplot(outlier.shape = NA, color = "#e31a1c") +
   geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#e31a1c") +
+  geom_hline(aes(yintercept = 0), linetype = "dashed") +
   scale_shape_manual(values = c(16,8,17)) +
   xlab("age cohort") + 
   ylab("root parameter (scaled diff)") +
