@@ -5,7 +5,7 @@ All code was run in R version 4.0.3 (2020-10-10). Necessary packages to run each
 
 All R scripts are written assuming the below organizational structure:
 ```
-SchoenoplectusGermination
+belowground_evolution
 │   README.md
 └─── data
 └─── figs_tables
