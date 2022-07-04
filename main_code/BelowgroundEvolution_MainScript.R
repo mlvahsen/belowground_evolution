@@ -334,10 +334,6 @@ mean((heights_mod - heights_anc)/heights_anc) # 0.003327307
 # Calculate 95% credible interval percent increase from ancestral to modern
 quantile((heights_mod - heights_anc)/heights_anc, c(0.025, 0.975)) # -0.03802610  0.04696763   
 
-<<<<<<< HEAD
-
-=======
->>>>>>> f0642c79ee8467573152354081570e65c94a7ffc
 ## Collect predicted means for aboveground biomass for CMEM analysis ####
 # Collect MCMC samples for all regression coefficients from agb model
 ggs(agb_cs_out) %>% 
@@ -841,19 +837,19 @@ cs_traits <- mono_traits %>% filter(location %in% c('corn', "sellman"))
 # combination for rs
 
 predicted_rs %>% 
-  select(contains("loc1") & contains("age1")) %>% 
+  dplyr::select(contains("loc1") & contains("age1")) %>% 
   rowMeans() %>% mean() -> mean_rs_ca
   
 predicted_rs %>% 
-  select(contains("loc2") & contains("age1")) %>% 
+  dplyr::select(contains("loc2") & contains("age1")) %>% 
   rowMeans() %>% mean() -> mean_rs_sa
 
 predicted_rs %>% 
-  select(contains("loc1") & contains("age2")) %>% 
+  dplyr::select(contains("loc1") & contains("age2")) %>% 
   rowMeans() %>% mean() -> mean_rs_cm
 
 predicted_rs %>% 
-  select(contains("loc2") & contains("age2")) %>% 
+  dplyr::select(contains("loc2") & contains("age2")) %>% 
   rowMeans() %>% mean() -> mean_rs_sm
   
 # Put means in vector: order is corn-ancestral, sellman-ancestral, corn-modern,
@@ -867,19 +863,19 @@ root_shoot_cohort_forMEM <- means_rs * bg_rs_scale
 # combination for agb
 
 predicted_agb %>% 
-  select(contains("loc1") & contains("age1")) %>% 
+  dplyr::select(contains("loc1") & contains("age1")) %>% 
   rowMeans() %>% mean() -> mean_agb_ca
 
 predicted_agb %>% 
-  select(contains("loc2") & contains("age1")) %>% 
+  dplyr::select(contains("loc2") & contains("age1")) %>% 
   rowMeans() %>% mean() -> mean_agb_sa
 
 predicted_agb %>% 
-  select(contains("loc1") & contains("age2")) %>% 
+  dplyr::select(contains("loc1") & contains("age2")) %>% 
   rowMeans() %>% mean() -> mean_agb_cm
 
 predicted_agb %>% 
-  select(contains("loc2") & contains("age2")) %>% 
+  dplyr::select(contains("loc2") & contains("age2")) %>% 
   rowMeans() %>% mean() -> mean_agb_sm
 
 # Put means in vector: order is corn-ancestral, sellman-ancestral, corn-modern,
@@ -894,19 +890,19 @@ agb_cohort_forMEM <- means_agb * bg_agb_scale
 # combination for root distribution parameter (beta)
 
 predicted_beta %>% 
-  select(contains("loc1") & contains("age1")) %>% 
+  dplyr::select(contains("loc1") & contains("age1")) %>% 
   rowMeans() %>% mean() -> mean_beta_ca
 
 predicted_beta %>% 
-  select(contains("loc2") & contains("age1")) %>% 
+  dplyr::select(contains("loc2") & contains("age1")) %>% 
   rowMeans() %>% mean() -> mean_beta_sa
 
 predicted_beta %>% 
-  select(contains("loc1") & contains("age2")) %>% 
+  dplyr::select(contains("loc1") & contains("age2")) %>% 
   rowMeans() %>% mean() -> mean_beta_cm
 
 predicted_beta %>% 
-  select(contains("loc2") & contains("age2")) %>% 
+  dplyr::select(contains("loc2") & contains("age2")) %>% 
   rowMeans() %>% mean() -> mean_beta_sm
 
 # Put means in vector: order is corn-ancestral, sellman-ancestral, corn-modern,

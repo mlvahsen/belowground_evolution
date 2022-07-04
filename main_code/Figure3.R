@@ -87,31 +87,48 @@ tibble(diff_df) %>%
 
 ## Figure 3b - average non-additivity across age groups for r:s ####
 
+# Change "modern" to "descendant"
 diffs_by_age %>% 
   mutate(age = case_when(age == "modern" ~ "descendant",
-                         T ~ age)) %>% 
+                         T ~ age)) -> diffs_by_age 
+
+# Fit linear model of scaled differences as a function of polyculture
+# composition
+rs_mod <- lm(`root:shoot ratio` ~ age, data = diffs_by_age)
+
+# Calculate marginal means and 95% confidence intervals and plot
+tibble(`root:shoot ratio` = summary(emmeans(rs_mod, ~ age))$emmean,
+       lower = summary(emmeans(rs_mod, ~age))$lower.CL,
+       upper = summary(emmeans(rs_mod, ~age))$upper.CL,
+       age = summary(emmeans(rs_mod, ~age))$age) %>%  
   mutate(age = factor(age, levels = c("ancestral", "mix", "descendant"))) %>% 
-  dplyr::select(age, `root:shoot ratio`) %>% 
   ggplot(aes(x = age, y = `root:shoot ratio`)) +
-  geom_boxplot(outlier.shape = NA, color = "#fb9a99") +
-  geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#fb9a99") +
-  scale_shape_manual(values = c(16,8,17)) +
   geom_hline(aes(yintercept = 0), linetype = "dashed") +
+  geom_point(aes(shape = age), color = "#fb9a99", size = 4) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), color = "#fb9a99", width = 0, size = 0.7) +
+  geom_jitter(data = diffs_by_age, aes(shape = age), width = 0.2, alpha = 0.4, color = "#fb9a99") +
+  scale_shape_manual(values = c(16,8,17)) +
   xlab("age cohort") +
   ylab("root:shoot (scaled diff)") +
   theme_bw() +
   theme(legend.position = "none") -> Fig3b
 
 ## Figure 3c - average non-additivity across age groups for root distribution ####
-diffs_by_age %>% 
-  mutate(age = case_when(age == "modern" ~ "descendant",
-                         T ~ age)) %>%
+
+# Fit linear model of scaled differences as a function of polyculture
+# composition
+beta_mod <- lm(`root distribution parameter` ~ age, data = diffs_by_age)
+
+tibble(`root distribution parameter` = summary(emmeans(beta_mod, ~ age))$emmean,
+       lower = summary(emmeans(beta_mod, ~age))$lower.CL,
+       upper = summary(emmeans(beta_mod, ~age))$upper.CL,
+       age = summary(emmeans(beta_mod, ~age))$age) %>% 
   mutate(age = factor(age, levels = c("ancestral", "mix", "descendant"))) %>% 
-  dplyr::select(age, `root distribution parameter`) %>% 
   ggplot(aes(x = age, y = `root distribution parameter`)) +
-  geom_boxplot(outlier.shape = NA, color = "#e31a1c") +
-  geom_jitter(aes(shape = age), width = 0.2, alpha = 0.4, color = "#e31a1c") +
   geom_hline(aes(yintercept = 0), linetype = "dashed") +
+  geom_point(aes(shape = age), size = 4, color = "#e31a1c") +
+  geom_errorbar(aes(ymin = lower, ymax = upper), color = "#e31a1c", width = 0, size = 0.7) +
+  geom_jitter(data = diffs_by_age, aes(shape = age), width = 0.2, alpha = 0.4, color = "#e31a1c") +
   scale_shape_manual(values = c(16,8,17)) +
   xlab("age cohort") + 
   ylab("root parameter (scaled diff)") +

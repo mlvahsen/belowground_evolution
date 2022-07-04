@@ -318,7 +318,7 @@ frame,position,pot,age,diversity,genotype,old_genotype,location,depth_seed,depth
 2,6,30,modern,poly,NA,NA,NA,NA,45,5,0.0359,nd,not_recorded,
 2,6,30,modern,poly,NA,NA,NA,NA,50,8,0.0169,nd,not_recorded,
 3,16,31,mix,poly,NA,NA,NA,NA,0,5,3.5257,nd,MLV,
-3,16,31,mix,poly,NA,NA,NA,NA,5,5,0.0971,nd,MLV,
+3,16,31,mix,poly,NA,NA,NA,NA,5,5,0.971,nd,MLV,
 3,16,31,mix,poly,NA,NA,NA,NA,10,5,0.3786,nd,MLV,
 3,16,31,mix,poly,NA,NA,NA,NA,15,5,0.2318,nd,MLV,
 3,16,31,mix,poly,NA,NA,NA,NA,20,5,0.1878,nd,MLV,
