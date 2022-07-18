@@ -941,13 +941,13 @@ run_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 carbon_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 
 for (i in 1:4){
-  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.37, relSeaLevelRiseTotal=37,
+  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
                           initElv=22.6, meanSeaLevel=msl,
                           meanHighWaterDatum=mhw, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = root_shoot_cohort_forMEM[i],
-                          rootTurnover=0.55, rootDepthMax=rooting_depth[i], omDecayRate=0.8,
+                          rootTurnover=0.55, rootDepthMax=betas_cohort_forMEM[i], omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
   run_store_cohort[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
