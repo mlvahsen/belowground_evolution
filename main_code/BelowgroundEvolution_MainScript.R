@@ -736,9 +736,19 @@ var_beta <- beta_sum$sigma.int^2
 
 # Calculate covariances between traits based on standard deviations due to
 # genotype as well as correlations between traits
-covar_biomass_rs <- biomass_sum$sigma.int.scaled * rs_sum$sigma.int * cor(mono_traits$agb, mono_traits$rs)
-covar_biomass_beta <- biomass_sum$sigma.int.scaled * beta_sum$sigma.int * cor(mono_traits$agb, mono_traits$beta)
-covar_rs_beta <- rs_sum$sigma.int * beta_sum$sigma.int * cor(mono_traits$rs, mono_traits$beta)
+
+# Create summary data set to get genetic correlations between traits
+# (between-genotype correlations) 
+
+summary_mono <- mono_traits %>% 
+  group_by(genotype) %>% 
+  summarize(mean_rs = mean(rs),
+            mean_beta = mean(beta),
+            mean_agb = mean(agb))
+
+covar_biomass_rs <- biomass_sum$sigma.int.scaled * rs_sum$sigma.int * cor(summary_mono$mean_agb, summary_mono$mean_rs)
+covar_biomass_beta <- biomass_sum$sigma.int.scaled * beta_sum$sigma.int * cor(summary_mono$mean_agb, summary_mono$mean_beta)
+covar_rs_beta <- rs_sum$sigma.int * beta_sum$sigma.int * cor(summary_mono$mean_rs, summary_mono$mean_beta)
 
 # Create covariance matrix
 covar_matrix <- matrix(c(var_biomass, covar_biomass_rs, covar_biomass_beta,
@@ -770,8 +780,13 @@ tibble(`aboveground biomass (g)` = samples1[,1],
 # Save these samples for later
 saveRDS(for_MEM, here("outputs/CMEM_runs/", "traits_for_MEM_simulations.rds"))
 
+# Get mean annual tidal data
+tides <- read_csv(here("supp_data", "tides_2018.csv"))
+mean(tides$`MSL (m)`) -> msl
+mean(tides$`MHW (m)`) -> mhw
+
 # Create storage for MEM model runs
-n_runs <- 1000
+n_runs <- 100
 # Store surface elevation
 run_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
 # Stores carbon sequestration
@@ -783,8 +798,8 @@ carbon_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
 # = 1000 iterations takes about ~25 minutes running time)
 for (i in 1:n_runs){
   mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=-1.6,
-                          meanHighWaterDatum=12.9, suspendedSediment=3e-05,
+                          initElv=22.6, meanSeaLevel=msl,
+                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
                           lunarNodalAmp=0,
                           # Iterate through bMax values
                           bMax = for_MEM$`aboveground biomass (g)`[i], 
@@ -926,13 +941,13 @@ run_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 carbon_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 
 for (i in 1:4){
-  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=-1.6,
-                          meanHighWaterDatum=12.9, suspendedSediment=3e-05,
+  mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.37, relSeaLevelRiseTotal=37,
+                          initElv=22.6, meanSeaLevel=msl,
+                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = root_shoot_cohort_forMEM[i],
-                          rootTurnover=0.5, rootDepthMax=rooting_depth[i], omDecayRate=0.8,
+                          rootTurnover=0.55, rootDepthMax=rooting_depth[i], omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
   run_store_cohort[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
@@ -951,10 +966,10 @@ for (i in 1:4){
 
 # Calculate average accretion rates
 init_elev <- 22.6
-avg_accretion_rates_cohort <- (run_store_cohort[,80] - init_elev) / 80
+avg_accretion_rates_cohort <- (run_store_cohort[,20] - init_elev) / 20
 
 # Calculate average carbon accumulation rates
-avg_C_accum_rate_cohort <- (carbon_store_cohort[,80] - carbon_store_cohort[,1]) / 80
+avg_C_accum_rate_cohort <- (carbon_store_cohort[,20] - carbon_store_cohort[,1]) / 20
 
 # Create a data frame to hold all of that information
 tibble(location = c("corn", "sellman", "corn", "sellman"),
@@ -1061,8 +1076,8 @@ carbon_store_agb_only <- matrix(NA, nrow = n_runs, ncol = 100)
 # takes about ~25 minutes running time)
 for (i in 1:n_runs){
   mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=-1.6,
-                          meanHighWaterDatum=12.9, suspendedSediment=3e-05,
+                          initElv=22.6, meanSeaLevel=msl,
+                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = for_MEM_agb_only$`aboveground biomass (g)`[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = for_MEM_agb_only$`root:shoot ratio`[1],
@@ -1093,8 +1108,8 @@ carbon_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
 # For root:shoot and rooting depth, take means across cohorts
 for (i in 1:4){
   mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=-1.6,
-                          meanHighWaterDatum=12.9, suspendedSediment=3e-05,
+                          initElv=22.6, meanSeaLevel=msl,
+                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = mean(root_shoot_cohort_forMEM),
