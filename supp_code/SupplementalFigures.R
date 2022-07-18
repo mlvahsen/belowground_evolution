@@ -6,7 +6,7 @@
 library(patchwork);library(raster); library(maps); library(cowplot);
 library(ggsn); library(ggmap); library(tidyverse);
 library(ggrepel); library(here); library(mvtnorm); library(GGally);
-library(ggmcmc)
+library(ggmcmc); library(ggExtra)
 
 ## Read in data
 # Derived trait data for all pots
@@ -500,9 +500,42 @@ dev.off()
 
 for_MEM_full <- readRDS(here("outputs/CMEM_runs", "traits_for_MEM_simulations.rds"))
 
-png(here("figs_tables","FigureS10_randomdrawsMEM.png"), width = 6.7, height = 5.7,
+# Make correlation plots between traits
+# agb vs rs
+cor_agb_rs <- cor(for_MEM_full$`aboveground biomass (g)`, for_MEM_full$`root:shoot ratio`)
+
+for_MEM_full %>% 
+  ggplot(aes(x = `aboveground biomass (g)`, y = `root:shoot ratio`)) +
+  geom_point(alpha = 0.2, size = 2) +
+  geom_smooth(method = "lm", se = F, color = "purple") +
+  theme_bw(base_size = 14) +
+  xlab(expression(paste("aboveground biomass (g ", cm^-2, ")"))) -> agb_rs
+
+# depth vs agb
+cor_depth_agb <- cor(for_MEM_full$`maximum rooting depth (cm)`, for_MEM_full$`aboveground biomass (g)`)
+
+for_MEM_full %>% 
+  ggplot(aes(x = `maximum rooting depth (cm)`, y = `aboveground biomass (g)`)) +
+  geom_point(alpha = 0.2, size = 2) +
+  geom_smooth(method = "lm", se = F, color = "purple") +
+  theme_bw(base_size = 14) +
+  ylab(expression(paste("aboveground biomass (g ", cm^-2, ")"))) -> depth_agb
+
+# rs vs depth
+cor_rs_depth <- cor(for_MEM_full$`root:shoot ratio`, for_MEM_full$`maximum rooting depth (cm)`)
+
+for_MEM_full %>% 
+  ggplot(aes(x = `root:shoot ratio`, y = `maximum rooting depth (cm)`)) +
+  geom_point(alpha = 0.2, size = 2) +
+  geom_smooth(method = "lm", se = F, color = "purple") +
+  theme_bw(base_size = 14) -> rs_depth
+
+a10 <- ggMarginal(agb_rs, fill = "gray", color = "gray27")
+b10 <- ggMarginal(depth_agb, fill = "gray", color = "gray27")
+c10 <- ggMarginal(rs_depth, fill = "gray", color = "gray27")
+
+png(here("figs_tables","FigureS10_randomdrawsMEM.png"), width = 9.22, height = 3.05,
     res = 300, units = "in")
-ggpairs(for_MEM_full, lower = list(continuous = wrap("smooth", alpha = 0.3, size=1))) +
-  theme_bw() + ylab("trait value") + xlab("trait value")
+cowplot::plot_grid(a10, b10, c10, nrow = 1)
 dev.off()
 

@@ -966,10 +966,10 @@ for (i in 1:4){
 
 # Calculate average accretion rates
 init_elev <- 22.6
-avg_accretion_rates_cohort <- (run_store_cohort[,20] - init_elev) / 20
+avg_accretion_rates_cohort <- (run_store_cohort[,80] - init_elev) / 80
 
 # Calculate average carbon accumulation rates
-avg_C_accum_rate_cohort <- (carbon_store_cohort[,20] - carbon_store_cohort[,1]) / 20
+avg_C_accum_rate_cohort <- (carbon_store_cohort[,80] - carbon_store_cohort[,1]) / 80
 
 # Create a data frame to hold all of that information
 tibble(location = c("corn", "sellman", "corn", "sellman"),
