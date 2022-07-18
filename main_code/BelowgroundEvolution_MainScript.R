@@ -809,7 +809,7 @@ for (i in 1:n_runs){
                           plantElevationType="orthometric",
                           # Iterate through root-to-shoot ratio
                           rootToShoot = for_MEM$`root:shoot ratio`[i],
-                          rootTurnover=0.5,
+                          rootTurnover=0.55,
                           # Iterate through maximum rooting depth
                           rootDepthMax=for_MEM$`maximum rooting depth (cm)`[i],
                           omDecayRate=0.8,
@@ -1081,7 +1081,7 @@ for (i in 1:n_runs){
                           lunarNodalAmp=0, bMax = for_MEM_agb_only$`aboveground biomass (g)`[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = for_MEM_agb_only$`root:shoot ratio`[1],
-                          rootTurnover=0.5, rootDepthMax=for_MEM_agb_only$`maximum rooting depth (cm)`[1], omDecayRate=0.8,
+                          rootTurnover=0.55, rootDepthMax=for_MEM_agb_only$`maximum rooting depth (cm)`[1], omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
   run_store_agb_only[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
@@ -1113,7 +1113,7 @@ for (i in 1:4){
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = mean(root_shoot_cohort_forMEM),
-                          rootTurnover=0.5, rootDepthMax=mean(rooting_depth), omDecayRate=0.8,
+                          rootTurnover=0.55, rootDepthMax=mean(rooting_depth), omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
   run_store_cohort_agb_only[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
