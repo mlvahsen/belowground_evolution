@@ -786,7 +786,7 @@ mean(tides$`MSL (m)`) -> msl
 mean(tides$`MHW (m)`) -> mhw
 
 # Create storage for MEM model runs
-n_runs <- 100
+n_runs <- 1000
 # Store surface elevation
 run_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
 # Stores carbon sequestration
