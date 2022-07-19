@@ -642,11 +642,16 @@ anova(width_mod)
 
 ## Cohort Marsh Equilibrium Model Simulations
 
-# Parameter estimates for bMax and root:shoot from Blue Genes 2019 experiment
-blue_genes <- read_rds(here("supp_data", "blue_genes_subdata.rds"))
+# Parameter estimates for bMax and root:shoot from 2019 marsh organ experiment
+blue_genes <- read_csv(here("supp_data", "expt2_data.csv"))
 
-# Fit a parabola for the aboveground biomass data from Blue Genes experiment
-quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes)
+# Filter blue genes data to be no competition, GCREW, and ambient CO2
+blue_genes %>% 
+  filter(comp == 0 & co2 == "ambient" &
+           location %in% c("corn", "kirkpatrick")) -> blue_genes_sub
+
+# Fit a parabola for the aboveground biomass data
+quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes_sub)
 # Extract quadratic regression coefficients
 coefs <- as.numeric(coef(quad_mod))
 
@@ -665,25 +670,39 @@ roots <- quadraticRoots(coefs[3], coefs[2], coefs[1])
 zMax_for_sim <- roots[2]
 zMin_for_sim <- roots[1]
 
-# Find elevation where peak biomass is given a symmetric parabola
+# Find peak biomass given a symmetric parabola
 zPeak <- (zMax_for_sim + zMin_for_sim) / 2
 
 # Calculate the predicted biomass at that elevation (bMax)
 bMax <- predict(quad_mod, newdata = data.frame(elevation = zPeak))
-# Convert to g / cm2 (4 inch diameter pots = 2 inch radius = 5.08 cm radius)
+# Convert to g / cm2
 pot_area_cm2 <- pi * 5.08^2
-# Get to the scales used in CMEM (g/cm2)
 bMax_for_sim <- bMax / pot_area_cm2
+
+# Convert the data to g/cm2 as well
+blue_genes_sub$agb_scam_g_cm2 <- blue_genes_sub$agb_scam / pot_area_cm2
 
 # Calculate average root-to-shoot ratio (Note: CMEM assumes static root-to-shoot
 # ratio across elevations)
 
-blue_genes %>% 
-  # If agb_scam is really low, then root:shoot will be really high just because
-  # of the initial propagule's rhizome weight, so we filter out for agb_scam >
-  # 0.1
-  filter(agb_scam > 0.1) %>% 
+# Plot up root:shoot and remove those that are not reasonable and are due to
+# experimental set-up artifacts
+blue_genes_sub %>% 
   mutate(rs = total_bg / agb_scam) %>% 
+  ggplot(aes(x = rs)) +
+  geom_histogram()
+
+# Take a look at the observations with r:s > 5
+blue_genes_sub %>% 
+  mutate(rs = total_bg / agb_scam) %>% 
+  filter(rs > 5) %>% 
+  select(pot_no, total_bg, agb_scam)
+# All of these are due to really small amounts of aboveground biomass with a
+# bigger piece of initial rhizome, so we can remove
+
+blue_genes_sub %>% 
+  mutate(rs = total_bg/agb_scam) %>% 
+  filter(rs < 5) %>% 
   pull(rs) %>% 
   mean() -> rootShoot_for_sim
 

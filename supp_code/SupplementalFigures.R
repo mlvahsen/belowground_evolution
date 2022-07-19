@@ -19,7 +19,7 @@ seed_age_priors <- readRDS(here("supp_data", "SeedAgeCalibrationPriors.rds"))
 # Results from monoculture/polyculture analysis
 diffs_by_age <- readRDS(here("outputs/monoculture_polyculture/", "diffs_by_age.rds"))
 # Blue genes data to inform mean adjustments for CMEM simulation
-blue_genes <- read_rds("supp_data/blue_genes_subdata.rds")
+blue_genes <- read_csv("supp_data/expt2_data.csv")
 
 # Set site colors for mapping and figures below
 colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
@@ -430,11 +430,12 @@ dev.off()
 
 ## Figure S9: Blue genes parameter values ####
 
-# Parameter estimates for bMax and root:shoot from Blue Genes 2019 experiment
-blue_genes <- read_rds(here("supp_data", "blue_genes_subdata.rds"))
+# Filter blue genes data to be no competition, GCREW, and ambient CO2
+blue_genes %>% 
+  filter(comp == 0 & co2 == "ambient" & location %in% c("corn", "kirkpatrick")) -> blue_genes_sub
 
 # Fit a parabola for the aboveground biomass data
-quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes)
+quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes_sub)
 # Extract quadratic regression coefficients
 coefs <- as.numeric(coef(quad_mod))
 
@@ -463,34 +464,50 @@ pot_area_cm2 <- pi * 5.08^2
 bMax_for_sim <- bMax / pot_area_cm2
 
 # Convert the data to g/cm2 as well
-blue_genes$agb_scam_g_cm2 <- blue_genes$agb_scam / pot_area_cm2
+blue_genes_sub$agb_scam_g_cm2 <- blue_genes_sub$agb_scam / pot_area_cm2
 
 # Figure S9a: biomass elevation parabola
-blue_genes %>% 
+blue_genes_sub %>% 
   ggplot(aes(x = elevation*100, y = agb_scam_g_cm2)) + 
   geom_point(alpha = 0.2) +
   geom_smooth(method = "lm", formula = y ~ x + I(x^2), se = FALSE, fullrange = T, size = 2, color = "gray47") +
   geom_hline(aes(yintercept = bMax_for_sim), linetype = "dashed", col = "purple", size = 1.5) +
   geom_vline(aes(xintercept = zMin_for_sim*100), linetype = "dotted", col = "darkgreen", size = 1.5)+
   geom_vline(aes(xintercept = zMax_for_sim*100), linetype = "dotted", col = "darkgreen", size = 1.5) +
-  ylim(0, 0.22) +
+  ylim(0, 0.18) +
   ylab(expression(paste("aboveground biomass (g/", cm^2, ")"))) +
   xlab("elevation (cm NAVD88)") +
   geom_point(aes(x = (zMin_for_sim*100 + zMax_for_sim*100)/2, y = bMax_for_sim), size = 5, color = "purple")+
   geom_point(aes(x = zMin_for_sim*100, y = 0), size = 5, color = "darkgreen") + 
   geom_point(aes(x = zMax_for_sim*100, y = 0), size = 5, color = "darkgreen") +
-  theme_bw() -> fig_S9a
+  theme_bw(base_size = 14) -> fig_S9a 
 
 # Figure S9b: root-shoot
-blue_genes %>%
+
+# Plot up root:shoot and remove those that are not reasonable and are due to
+# experimental set-up artifacts
+blue_genes_sub %>% 
   mutate(rs = total_bg / agb_scam) %>% 
-  filter(rs < 6) %>% 
+  ggplot(aes(x = rs)) +
+  geom_histogram()
+
+# Take a look at the observations with r:s > 5
+blue_genes_sub %>% 
+  mutate(rs = total_bg / agb_scam) %>% 
+  filter(rs > 5) %>% 
+  select(pot_no, total_bg, agb_scam)
+# All of these are due to really small amounts of aboveground biomass with a
+# bigger piece of initial rhizome, so we can remove
+
+blue_genes_sub %>%
+  mutate(rs = total_bg / agb_scam) %>% 
+  filter(rs < 5) %>% 
   ggplot(aes(x = rs)) +
   geom_histogram(binwidth = 0.5) +
   xlab("root-to-shoot ratio") +
   geom_vline(aes(xintercept = mean(total_bg/agb_scam)), linetype = "dashed", color = "orange", size = 1.5) +
   geom_point(aes(x = mean(total_bg/agb_scam), y = 0), size = 5, color = "orange") +
-  theme_bw() + ylab("count") -> fig_S9b
+  theme_bw(base_size = 14) + ylab("count") ->fig_S9b
 
 png(here("figs_tables", "FigS9_BlueGenesParams.png"), height = 3.5, width = 6.5, res = 300, units = "in")
 plot_grid(fig_S9a, fig_S9b, labels = "auto",
