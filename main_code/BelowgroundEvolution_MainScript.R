@@ -164,6 +164,14 @@ beta_cs_out <- run_models_fixed(cs_traits, "beta", model_template_cs, diag_plot 
 # between-genotype variation is estimated to be zero and was thus dropped from
 # the model.
 
+# Calculate mean and 95% quantiles of regression coefficients for main text
+ggs(beta_cs_out) %>% 
+  filter(Parameter %in% c("beta[6]", "beta[7]")) %>% 
+  group_by(Parameter) %>% 
+  summarize(mean = mean(value),
+            lower = quantile(value, 0.025),
+            upper = quantile(value, 0.975))
+
 # Save as R data file objects to use later for plotting and subsequent analyses
 saveRDS(agb_cs_out, here("outputs/corn_sellman_models/", "agb_csmodel.rds"))
 saveRDS(rs_cs_out, here("outputs/corn_sellman_models/", "rs_csmodel.rds"))
