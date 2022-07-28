@@ -430,42 +430,6 @@ dev.off()
 
 ## Figure S9: Blue genes parameter values ####
 
-# Filter blue genes data to be no competition, GCREW, and ambient CO2
-blue_genes %>% 
-  filter(comp == 0 & co2 == "ambient" & location %in% c("corn", "kirkpatrick")) -> blue_genes_sub
-
-# Fit a parabola for the aboveground biomass data
-quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes_sub)
-# Extract quadratic regression coefficients
-coefs <- as.numeric(coef(quad_mod))
-
-# Create a function to solve for roots of quadratic formula
-quadraticRoots <- function(a, b, c) {
-  discriminant <- (b^2) - (4*a*c)
-  x_int_plus <- (-b + sqrt(discriminant)) / (2*a)
-  x_int_neg <- (-b - sqrt(discriminant)) / (2*a)
-  xints <- c(x_int_plus, x_int_neg)
-  return(xints)
-}
-
-# Extract roots (these are the same as the min and max elevations at which
-# biomass can exist)
-roots <- quadraticRoots(coefs[3], coefs[2], coefs[1])
-zMax_for_sim <- roots[2]
-zMin_for_sim <- roots[1]
-
-# Find peak biomass given a symmetric parabola
-zPeak <- (zMax_for_sim + zMin_for_sim) / 2
-
-# Calculate the predicted biomass at that elevation (bMax)
-bMax <- predict(quad_mod, newdata = data.frame(elevation = zPeak))
-# Convert to g / cm2
-pot_area_cm2 <- pi * 5.08^2
-bMax_for_sim <- bMax / pot_area_cm2
-
-# Convert the data to g/cm2 as well
-blue_genes_sub$agb_scam_g_cm2 <- blue_genes_sub$agb_scam / pot_area_cm2
-
 # Figure S9a: biomass elevation parabola
 blue_genes_sub %>% 
   ggplot(aes(x = elevation*100, y = agb_scam_g_cm2)) + 
@@ -483,21 +447,6 @@ blue_genes_sub %>%
   theme_bw(base_size = 14) -> fig_S9a 
 
 # Figure S9b: root-shoot
-
-# Plot up root:shoot and remove those that are not reasonable and are due to
-# experimental set-up artifacts
-blue_genes_sub %>% 
-  mutate(rs = total_bg / agb_scam) %>% 
-  ggplot(aes(x = rs)) +
-  geom_histogram()
-
-# Take a look at the observations with r:s > 5
-blue_genes_sub %>% 
-  mutate(rs = total_bg / agb_scam) %>% 
-  filter(rs > 5) %>% 
-  select(pot_no, total_bg, agb_scam)
-# All of these are due to really small amounts of aboveground biomass with a
-# bigger piece of initial rhizome, so we can remove
 
 blue_genes_sub %>%
   mutate(rs = total_bg / agb_scam) %>% 
