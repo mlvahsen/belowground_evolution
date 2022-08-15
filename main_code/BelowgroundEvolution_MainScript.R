@@ -651,12 +651,12 @@ anova(width_mod)
 ## Cohort Marsh Equilibrium Model Simulations
 
 # Parameter estimates for bMax and root:shoot from 2019 marsh organ experiment
-blue_genes <- read_csv(here("supp_data", "expt2_data.csv"))
+blue_genes <- read_csv(here("supp_data", "bg_data.csv"))
 
 # Filter blue genes data to be no competition, GCREW, and ambient CO2
 blue_genes %>% 
   filter(comp == 0 & co2 == "ambient" &
-           location %in% c("corn", "kirkpatrick")) -> blue_genes_sub
+           provenance %in% c("corn", "kirkpatrick")) -> blue_genes_sub
 
 # Fit a parabola for the aboveground biomass data
 quad_mod <- lm(agb_scam ~ elevation + I(elevation^2), data = blue_genes_sub)
@@ -741,6 +741,14 @@ pot_area <- 7.62^2*pi
 biomass_sum %>% 
   mutate(mu.alpha.scaled = mu.alpha / pot_area,
          sigma.int.scaled = sigma.int / pot_area) -> biomass_sum
+
+# Save parameter values for Fig S12
+tibble(zMin = zMin_for_sim,
+       zMax = zMax_for_sim,
+       bMax = bMax_for_sim,
+       rootShoot = rootShoot_for_sim) -> params_for_plotting
+
+write_rds(params_for_plotting, here("outputs", "bg_params_plotting.rds"))
 
 ##
 # All variation - vary due to genotype 
