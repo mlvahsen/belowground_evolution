@@ -111,7 +111,7 @@ pred_age_long %>%
 # Calculate predicted decade based on seed ages for supplemental table (Table
 # S1)
 pred_age_summary_stat %>% 
-  mutate(pred_year = round(2016 - median)) -> TableS1
+  mutate(pred_year = trunc(2016 - median)) -> TableS1
 
 write_csv(TableS1, here("figs_tables", "TableS1.csv"))
 
