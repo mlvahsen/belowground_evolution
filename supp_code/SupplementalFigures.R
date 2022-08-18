@@ -140,9 +140,9 @@ dev.off()
 ## Figure S3: genotype PCA ####
 
 # Read in genetic data and create usable object
-vcf_fn <- here("supp_data","94all.vcf")
-snpgdsVCF2GDS(vcf_fn, here("supp_data", "94genotypes.gds"), method = "biallelic.only")
-genofile <- snpgdsOpen(here("supp_data", "94genotypes.gds"))
+#vcf_fn <- here("supp_data","94all.vcf")
+#snpgdsVCF2GDS(vcf_fn, here("supp_data", "94genotypes.gds"), method = "biallelic.only")
+genofile <- snpgdsOpen(here("supp_data", "94genotypes.gds"), allow.duplicate = T)
 # Read in genetic data codes 
 gen_data <- read_csv(here("supp_data", "genotypes_for_PCA.csv"))
 
@@ -176,8 +176,8 @@ gen_merged %>%
              size = 3, stroke = 1.5, alpha = 0.7) + 
   scale_shape_manual(values = c(21, 24)) +
   theme_bw(base_size = 14) +
-  xlab("axis 1 (10.1%)") +
-  ylab("axis 2 (8.4%)") +
+  xlab("axis 1 (10.9%)") +
+  ylab("axis 2 (9.0%)") +
   labs(shape = "cohort",
        color = "in experiment?") +
   scale_fill_manual(values = c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")) +
@@ -190,11 +190,11 @@ gen_merged %>%
   ggtitle("All provenances")-> all_plot
 
 # Now repeat for just the Corn genotypes alone
-vcf_corn <- here("supp_data", "Corn_only.vcf")
+#vcf_corn <- here("supp_data", "Corn_only.vcf")
 
 # Read in data and create SNP data object
-snpgdsVCF2GDS(vcf_corn, here("supp_data", "Corngenotypes.vcf"), method = "biallelic.only")
-genofile_corn <- snpgdsOpen(here("supp_data", "Corngenotypes.vcf"))
+#snpgdsVCF2GDS(vcf_corn, here("supp_data", "Corngenotypes.vcf"), method = "biallelic.only")
+genofile_corn <- snpgdsOpen(here("supp_data", "Corngenotypes.vcf"), allow.duplicate = T)
 
 # Create PCA
 pca_data_corn <- snpgdsPCA(genofile_corn, autosome.only = F)
@@ -214,8 +214,8 @@ gen_merged_corn %>%
              size = 2, stroke = 1, alpha = 0.7, fill = "#1b9e77") + 
   scale_shape_manual(values = c(21, 24)) +
   theme_bw(base_size = 14) +
-  xlab("axis 1 (9.0%)") +
-  ylab("axis 2 (5.4%)") +
+  xlab("axis 1 (14.1%)") +
+  ylab("axis 2 (8.4%)") +
   labs(shape = "cohort",
        color = "in experiment?") +
   scale_color_manual(values = c("gold", "gray47")) +
@@ -224,11 +224,11 @@ gen_merged_corn %>%
   ggtitle("Corn only")-> corn_plot
 
 # Repeat for Sellman genotypes only
-vcf_sellman <- here("supp_data","Sellman_only.vcf")
+#vcf_sellman <- here("supp_data","Sellman_only.vcf")
 
 # Read in data and create SNP data object
-snpgdsVCF2GDS(vcf_sellman, here("supp_data", "Sellmangenotypes.gds"), method = "biallelic.only")
-genofile_sellman <- snpgdsOpen(here("supp_data", "Sellmangenotypes.gds"))
+#snpgdsVCF2GDS(vcf_sellman, here("supp_data", "Sellmangenotypes.gds"), method = "biallelic.only")
+genofile_sellman <- snpgdsOpen(here("supp_data", "Sellmangenotypes.gds"), allow.duplicate = T)
 
 # Create PCA
 pca_data_sellman <- snpgdsPCA(genofile_sellman, autosome.only = F)
@@ -248,8 +248,8 @@ gen_merged_sellman %>%
              size = 2, stroke = 1, alpha = 0.7, fill = "#e7298a") + 
   scale_shape_manual(values = c(21, 24)) +
   theme_bw(base_size = 14) +
-  xlab("axis 1 (5.7%)") +
-  ylab("axis 2 (2.6%)") +
+  xlab("axis 1 (25.7%)") +
+  ylab("axis 2 (11.8%)") +
   labs(shape = "cohort",
        color = "in experiment?") +
   scale_color_manual(values = c("gold", "gray47")) +
