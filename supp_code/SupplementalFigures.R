@@ -775,7 +775,7 @@ for (i in 1:6){
                                  meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
                                  lunarNodalAmp=0, bMax = model_scenarios$bmax[i], 
                                  zVegMin = model_scenarios$zmin[i], zVegMax=model_scenarios$zmax[i], zVegPeak=NA,
-                                 plantElevationType="orthometric", rootToShoot = 1.8,
+                                 plantElevationType="orthometric", rootToShoot = 1.6,
                                  rootTurnover=0.55, rootDepthMax=30, omDecayRate=0.8,
                                  recalcitrantFrac=0.2, captureRate = 2.8)
   run_store[i,] <- mem_out$annualTimeSteps$surfaceElevation
