@@ -817,8 +817,8 @@ saveRDS(for_MEM, here("outputs/CMEM_runs/", "traits_for_MEM_simulations.rds"))
 
 # Get mean annual tidal data
 tides <- read_csv(here("supp_data", "tides_2018.csv"))
-mean(tides$`MSL (m)`) -> msl
-mean(tides$`MHW (m)`) -> mhw
+mean(tides$`MSL (m)`)*100 -> msl
+mean(tides$`MHW (m)`)*100 -> mhw
 
 # Create storage for MEM model runs
 n_runs <- 1000

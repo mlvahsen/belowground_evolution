@@ -48,7 +48,7 @@ cmem_full %>%
   geom_point(aes(x = 2100, y = end_points[4]), color = colors[4], size = 3, shape = 17) +
   theme_bw() +
   theme(legend.position = "none") +
-  ylim(22.5,35) -> Fig4_panelA
+  ylim(22.5,40) -> Fig4_panelA
 
 ## Figure 4b - average accretion rate histogram ####
 tibble(acc_rate = cmem_rates$avg_acc*10) %>%
@@ -123,7 +123,7 @@ cmem_agb %>%
   geom_point(aes(x = 2100, y = end_points_agb[4]), color = colors[4], size = 3, shape = 17) +
   theme_bw() +
   theme(legend.position = "none") +
-  ylim(22.5,35) -> Fig4_panelD
+  ylim(22.5,40) -> Fig4_panelD
 
 
 ## Figure 4e - compare variation for agb + bgb and abg only models ####
