@@ -817,8 +817,8 @@ saveRDS(for_MEM, here("outputs/CMEM_runs/", "traits_for_MEM_simulations.rds"))
 
 # Get mean annual tidal data
 tides <- read_csv(here("supp_data", "tides_2018.csv"))
-mean(tides$`MSL (m)`)*100 -> msl
-mean(tides$`MHW (m)`)*100 -> mhw
+mean(tides$`MSL (m)`) -> msl
+mean(tides$`MHW (m)`) -> mhw
 
 # Create storage for MEM model runs
 n_runs <- 1000
@@ -833,8 +833,8 @@ carbon_store <- matrix(NA, nrow = n_runs, ncol = n_runs)
 # = 1000 iterations takes about ~25 minutes running time)
 for (i in 1:n_runs){
   mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=msl,
-                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
+                          initElv=22.6, meanSeaLevel=msl*100,
+                          meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
                           lunarNodalAmp=0,
                           # Iterate through bMax values
                           bMax = for_MEM$`aboveground biomass (g)`[i], 
@@ -977,8 +977,8 @@ carbon_store_cohort <- matrix(NA, nrow = 4, ncol = 100)
 
 for (i in 1:4){
   mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=msl,
-                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
+                          initElv=22.6, meanSeaLevel=msl*100,
+                          meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = root_shoot_cohort_forMEM[i],
@@ -1012,6 +1012,8 @@ tibble(location = c("corn", "sellman", "corn", "sellman"),
        acc_v = avg_accretion_rates_cohort * 10,
        # unit conversion for carbon accumulation 
        acc_C = avg_C_accum_rate_cohort * 1e-6 / 1e-8) -> cohort_summary
+
+mean(cohort_summary$acc_C)
 
 write_rds(cohort_summary, here("outputs/CMEM_runs", "CMEM_rates_full_cohort.rds"))
 
@@ -1143,12 +1145,12 @@ carbon_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
 # For root:shoot and rooting depth, take means across cohorts
 for (i in 1:4){
   mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=msl,
-                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
+                          initElv=22.6, meanSeaLevel=msl*100,
+                          meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = agb_cohort_forMEM[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
-                          plantElevationType="orthometric", rootToShoot = mean(root_shoot_cohort_forMEM),
-                          rootTurnover=0.55, rootDepthMax=mean(rooting_depth), omDecayRate=0.8,
+                          plantElevationType="orthometric", rootToShoot = mean(for_MEM$`root:shoot ratio`),
+                          rootTurnover=0.55, rootDepthMax=mean(for_MEM$`maximum rooting depth (cm)`), omDecayRate=0.8,
                           recalcitrantFrac=0.2, captureRate = 2.8)
   run_store_cohort_agb_only[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
@@ -1207,3 +1209,60 @@ CMEM_predictions_belowground %>%
 # Save output from both simulations for plotting later
 write_rds(CMEM_predictions_belowground, here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))
 write_rds(CMEM_predictions_agb_only, here("outputs/CMEM_runs", "CMEM_predictions_agb_only.rds"))
+
+# See how the difference in carbon accumulation due to evolution compares to a
+# change in the total amount of SLR during the simulation period
+
+# Run the model using the average values for abg, root depth distribution, and
+# root-to-shoot ratio
+
+# Run model at trait means and with all other parameters the same as before
+mem_out_slr34 <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
+                               initElv=22.6, meanSeaLevel=msl*100,
+                               meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
+                               lunarNodalAmp=0, bMax = mean(for_MEM$`aboveground biomass (g)`), 
+                               zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
+                               plantElevationType="orthometric", rootToShoot = mean(for_MEM$`root:shoot ratio`),
+                               rootTurnover=0.55, rootDepthMax=mean(for_MEM$`maximum rooting depth (cm)`), omDecayRate=0.8,
+                               recalcitrantFrac=0.2, captureRate = 2.8)
+
+# Calculate amount C across simulation
+mem_out_slr34$cohorts %>% 
+  mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
+         perc_C = 0.4*loi + 0.0025*loi^2,
+         layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
+  group_by(year) %>% 
+  summarize(total_C = sum(layer_C)) %>% pull(total_C) -> C_34
+
+# Repeat for at SLR = 43.5
+mem_out_slr43 <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=43.5,
+                                     initElv=22.6, meanSeaLevel=msl*100,
+                                     meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
+                                     lunarNodalAmp=0, bMax = mean(for_MEM$`aboveground biomass (g)`), 
+                                     zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
+                                     plantElevationType="orthometric", rootToShoot = mean(for_MEM$`root:shoot ratio`),
+                                     rootTurnover=0.55, rootDepthMax=mean(for_MEM$`maximum rooting depth (cm)`), omDecayRate=0.8,
+                                     recalcitrantFrac=0.2, captureRate = 2.8)
+
+# Calculate amount C across simulation
+mem_out_slr43$cohorts %>% 
+  mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
+         perc_C = 0.4*loi + 0.0025*loi^2,
+         layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
+  group_by(year) %>% 
+  summarize(total_C = sum(layer_C)) %>% pull(total_C) -> C_43
+
+# Calculate average C accumulation rates for both
+(C_34[80] - C_34[1])/80 -> C_accum_34
+(C_43[80] - C_43[1])/80 -> C_accum_43
+
+# Calculate percent increase with decreasing amounts of SLR
+C_accum_34/C_accum_43 # 1.320525 -- this is pretty close to the 32.9% increase due to evolution
+
+# Get the differences in mean sea level at year 80 in the simulation (2100)
+msl_slr34 <- mem_out_slr34$annualTimeSteps$meanSeaLevel[80]
+msl_slr43 <- mem_out_slr43$annualTimeSteps$meanSeaLevel[80]
+
+msl_slr43 - msl_slr34 # 6.064646
+# The percent change we see due to evolution is the same as a change in SLR by
+# 6cm
