@@ -126,6 +126,7 @@ FigS2 <- pred_age_summary_stat %>%
   coord_flip() +
   scale_x_reverse() +
   scale_color_manual(values = c("gray67", "gray27")) +
+  scale_shape_manual(values = c(17,19)) +
   xlab("seed depth (cm)") +
   geom_label(aes(y = 10, x = 2.5), label = "descendant", size = 6,
              color = "gray67", label.size = 1) +
@@ -163,8 +164,8 @@ gen_data %>%
   mutate(expt = factor(expt, c("yes", "no"))) %>% 
   mutate(cohort = case_when(cohort == "extant" ~ "descendant (0-5cm)",
                             cohort == "descendant" ~ "descendant (0-5cm)",
-                            T ~ "ancestral (10-21cm)")) %>% 
-  mutate(cohort = factor(cohort, c("descendant (0-5cm)", "ancestral (10-21cm)")))-> gen_data
+                            T ~ "ancestral (9-21cm)")) %>% 
+  mutate(cohort = factor(cohort, c("descendant (0-5cm)", "ancestral (9-21cm)")))-> gen_data
 
 # Merge gen_data with SNP info
 merge(gen_data, all_genotypes_pca_data) -> gen_merged
@@ -174,7 +175,7 @@ gen_merged %>%
   ggplot(aes(x = eig1, y = eig2)) +
   geom_point(aes(color = expt, fill = provenance, shape = cohort),
              size = 3, stroke = 1.5, alpha = 0.7) + 
-  scale_shape_manual(values = c(21, 24)) +
+  scale_shape_manual(values = c(24, 21)) +
   theme_bw(base_size = 14) +
   xlab("axis 1 (10.9%)") +
   ylab("axis 2 (9.0%)") +
@@ -212,7 +213,7 @@ gen_merged_corn %>%
   ggplot(aes(x = eig1, y = eig2)) +
   geom_point(aes(color = expt, shape = cohort),
              size = 2, stroke = 1, alpha = 0.7, fill = "#1b9e77") + 
-  scale_shape_manual(values = c(21, 24)) +
+  scale_shape_manual(values = c(24, 21)) +
   theme_bw(base_size = 14) +
   xlab("axis 1 (14.1%)") +
   ylab("axis 2 (8.4%)") +
@@ -246,7 +247,7 @@ gen_merged_sellman %>%
   ggplot(aes(x = eig1, y = eig2)) +
   geom_point(aes(color = expt, shape = cohort),
              size = 2, stroke = 1, alpha = 0.7, fill = "#e7298a") + 
-  scale_shape_manual(values = c(21, 24)) +
+  scale_shape_manual(values = c(24, 21)) +
   theme_bw(base_size = 14) +
   xlab("axis 1 (25.7%)") +
   ylab("axis 2 (11.8%)") +
