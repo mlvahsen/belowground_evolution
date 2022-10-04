@@ -629,9 +629,9 @@ diffs_by_age_beta <-
 beta_mod <- lm(`root distribution parameter` ~ age, data = diffs_by_age_beta)
 anova(beta_mod)
 # Get estimate of mean difference between groups
-coef(beta_mod)
+round(coef(beta_mod),3)
 # Get confidence intervals around that difference
-confint(beta_mod)
+round(confint(beta_mod),3)
 
 rs_mod <- lm(`root:shoot ratio` ~ age, data = diffs_by_age)
 anova(rs_mod)
@@ -1013,8 +1013,6 @@ tibble(location = c("corn", "sellman", "corn", "sellman"),
        # unit conversion for carbon accumulation 
        acc_C = avg_C_accum_rate_cohort * 1e-6 / 1e-8) -> cohort_summary
 
-mean(cohort_summary$acc_C)
-
 write_rds(cohort_summary, here("outputs/CMEM_runs", "CMEM_rates_full_cohort.rds"))
 
 # Join together data frame of simulations based on genotypic variation and
@@ -1113,8 +1111,8 @@ carbon_store_agb_only <- matrix(NA, nrow = n_runs, ncol = 100)
 # takes about ~25 minutes running time)
 for (i in 1:n_runs){
   mem_out <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=34,
-                          initElv=22.6, meanSeaLevel=msl,
-                          meanHighWaterDatum=mhw, suspendedSediment=3e-05,
+                          initElv=22.6, meanSeaLevel=msl*100,
+                          meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
                           lunarNodalAmp=0, bMax = for_MEM_agb_only$`aboveground biomass (g)`[i], 
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = for_MEM_agb_only$`root:shoot ratio`[1],
@@ -1209,6 +1207,9 @@ CMEM_predictions_belowground %>%
 # Save output from both simulations for plotting later
 write_rds(CMEM_predictions_belowground, here("outputs/CMEM_runs", "CMEM_predictions_full.rds"))
 write_rds(CMEM_predictions_agb_only, here("outputs/CMEM_runs", "CMEM_predictions_agb_only.rds"))
+
+
+## Comparing the effect of evolution to the effect of changes in SLR ####
 
 # See how the difference in carbon accumulation due to evolution compares to a
 # change in the total amount of SLR during the simulation period
