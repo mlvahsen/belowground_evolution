@@ -16,7 +16,7 @@ cmem_rates <- read_rds(here("outputs/CMEM_runs", "CMEM_rates_full.rds"))
 cmem_rates_cohort <- read_rds(here("outputs/CMEM_runs", "CMEM_rates_full_cohort.rds"))
 
 # Set colors for plotting
-colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
+colors <- c("#359B73", "#3DB7E9", "#F748A5", "#E69F00")
 ## Figure 4a - surface elevation predictions for AG + BG simulations ####
 
 # Collect elevation values for each age-location cohort at the last year of the

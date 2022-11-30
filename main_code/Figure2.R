@@ -6,8 +6,8 @@
 library(tidyverse); library(cowplot); library(here); library(ggmcmc); library(lme4)
 
 # Set colors for plotting
-colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
-
+colors <- c("#359B73", "#3DB7E9", "#F748A5", "#E69F00")
+# corn, hog,kirkpatrick, sellman
 # Read in Bayesian regression model output from corn-sellman models
 cs_agb_out <- read_rds(here("outputs/corn_sellman_models", "agb_csmodel.rds"))
 cs_bgb_out <- read_rds(here("outputs/corn_sellman_models", "bgb_csmodel.rds"))

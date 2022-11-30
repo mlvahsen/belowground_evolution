@@ -23,7 +23,7 @@ diffs_by_age <- readRDS(here("outputs/monoculture_polyculture/", "diffs_by_age.r
 blue_genes <- read_csv("supp_data/bg_data.csv")
 
 # Set site colors for mapping and figures below
-colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
+colors <- c("#359B73", "#3DB7E9", "#F748A5", "#E69F00")
 
 # Subset data for just monocultures for plots below
 mono_traits <- all_traits %>% 
@@ -181,9 +181,9 @@ gen_merged %>%
   ylab("axis 2 (9.0%)") +
   labs(shape = "cohort",
        color = "in experiment?") +
-  scale_fill_manual(values = c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")) +
+  scale_fill_manual(values = colors) +
   scale_color_manual(values = c("gold", "gray47")) +
-  guides(fill = guide_legend(override.aes = list(color = c("#1b9e77", "#d95f02", "#7570b3", "#e7298a"))),
+  guides(fill = guide_legend(override.aes = list(color = colors)),
          color = guide_legend(override.aes = list(shape = 21))) +
   theme(legend.position = "left",  legend.box="vertical",
         legend.box.background = element_rect(colour = "black"),
@@ -212,7 +212,7 @@ merge(gen_data, corn_pca) -> gen_merged_corn
 gen_merged_corn %>% 
   ggplot(aes(x = eig1, y = eig2)) +
   geom_point(aes(color = expt, shape = cohort),
-             size = 2, stroke = 1, alpha = 0.7, fill = "#1b9e77") + 
+             size = 2, stroke = 1, alpha = 0.7, fill = colors[1]) + 
   scale_shape_manual(values = c(24, 21)) +
   theme_bw(base_size = 14) +
   xlab("axis 1 (14.1%)") +
@@ -246,7 +246,7 @@ merge(gen_data, sellman_pca) -> gen_merged_sellman
 gen_merged_sellman %>% 
   ggplot(aes(x = eig1, y = eig2)) +
   geom_point(aes(color = expt, shape = cohort),
-             size = 2, stroke = 1, alpha = 0.7, fill = "#e7298a") + 
+             size = 2, stroke = 1, alpha = 0.7, fill = colors[4]) + 
   scale_shape_manual(values = c(24, 21)) +
   theme_bw(base_size = 14) +
   xlab("axis 1 (25.7%)") +
@@ -272,7 +272,7 @@ all_plot + corn_plot + sellman_plot +
 dev.off()
 
 ## Figure S4: random intercepts of monoculture models ####
-colors <- c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")
+colors <- c("#359B73", "#3DB7E9", "#F748A5", "#E69F00")
 
 mono_traits %>% 
   rename(`age cohort` = age,
@@ -367,7 +367,7 @@ make_fig1_panel <- function(data, coda_object, trait, label_y, legend, xlab){
                     size = 0.8) +
     geom_vline(aes(xintercept = 8.5)) +
     geom_hline(aes(yintercept = mean_value), color = "gray47", linetype = "dashed") +
-    scale_color_manual(values = c("#1b9e77", "#d95f02", "#7570b3", "#e7298a")) +
+    scale_color_manual(values = colors) +
     xlab("genotype") + ylab(trait) +
     theme_bw() +
     theme(legend.position = legend, legend.box = "vertical",
