@@ -778,15 +778,10 @@ for (i in 1:6){
                                  zVegMin = model_scenarios$zmin[i], zVegMax=model_scenarios$zmax[i], zVegPeak=NA,
                                  plantElevationType="orthometric", rootToShoot = 1.6,
                                  rootTurnover=0.55, rootDepthMax=30, omDecayRate=0.8,
-                                 recalcitrantFrac=0.2, captureRate = 2.8)
+                                 recalcitrantFrac=0.2, captureRate = 2.8, omToOcParams = list(B0 = 0, B1 = 0.44))
   run_store[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
-  mem_out$cohorts %>% 
-    mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
-           perc_C = 0.4*loi + 0.0025*loi^2,
-           layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
-    group_by(year) %>% 
-    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store[i,]
+  mem_out$annualTimeSteps$cFlux -> carbon_store[i,]
   print(i)
 }
 
@@ -795,7 +790,7 @@ init_elev <- 22.6
 avg_accretion_rate <- (run_store[,80] - init_elev) / 80
 
 # Calculate average carbon accumulation rates
-avg_C_accum_rate <- (carbon_store[,80] - carbon_store[,1]) / 80
+avg_C_accum_rate <- rowMeans(carbon_store[,2:80])
 
 # Create a data frame to hold all of that information
 tibble(scenario = c("ancestral (bMax)", "descendant (bMax)",
@@ -803,7 +798,8 @@ tibble(scenario = c("ancestral (bMax)", "descendant (bMax)",
                     "ancestral (bMax + range)", "descendant (bMax + range)"),
        `vert. accretion rate` = avg_accretion_rate * 10,
        # unit conversion for carbon accumulation 
-       `C accum. rate` = avg_C_accum_rate * 1e-6 / 1e-8) 
+       `C accum. rate` = avg_C_accum_rate * 1e-6 / 1e-8) %>% 
+  pull(`C accum. rate`)
 
 # Create second summary plot of mean predictions and parameter values for each
 # age cohort using the 3 scenarios outlined about

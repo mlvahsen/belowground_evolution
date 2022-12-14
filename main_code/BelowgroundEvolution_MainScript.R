@@ -848,17 +848,12 @@ for (i in 1:n_runs){
                           # Iterate through maximum rooting depth
                           rootDepthMax=for_MEM$`maximum rooting depth (cm)`[i],
                           omDecayRate=0.8,
-                          recalcitrantFrac=0.2, captureRate = 2.8)
+                          recalcitrantFrac=0.2, captureRate = 2.8,
+                          omToOcParams = list(B0 = 0, B1 = 0.44))
   run_store[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
-  # Calculate amount of carbon at each time step. This follows the %C
-  # calculation from Craft et al. 1991
-  mem_out$cohorts %>% 
-    mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
-           perc_C = 0.4*loi + 0.0025*loi^2,
-           layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
-    group_by(year) %>% 
-    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store[i,]
+  # Calculate amount of carbon at each time step. 
+  carbon_store[i,] <- mem_out$annualTimeSteps$cFlux
   print(i)
 }
 
@@ -867,7 +862,7 @@ init_elev <- 22.6
 avg_accretion_rates <- (run_store[,80] - init_elev) / 80
 
 # Calculate average carbon accumulation rate for each iteration
-avg_C_accum_rate <- (carbon_store[,80] - carbon_store[,1]) / 80
+avg_C_accum_rate <- rowMeans(carbon_store[,2:80])
 
 # Create a data frame of average accretion rates and carbon accumulation rates
 # from these simulations for plotting later.
@@ -983,16 +978,9 @@ for (i in 1:4){
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = root_shoot_cohort_forMEM[i],
                           rootTurnover=0.55, rootDepthMax=betas_cohort_forMEM[i], omDecayRate=0.8,
-                          recalcitrantFrac=0.2, captureRate = 2.8)
+                          recalcitrantFrac=0.2, captureRate = 2.8, omToOcParams = list(B0 = 0, B1 = 0.44))
   run_store_cohort[i,] <- mem_out$annualTimeSteps$surfaceElevation
-  
-  
-  mem_out$cohorts %>% 
-    mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
-           perc_C = 0.4*loi + 0.0025*loi^2,
-           layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
-    group_by(year) %>% 
-    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store_cohort[i,]
+  carbon_store_cohort[i,] <- mem_out$annualTimeSteps$cFlux
   print(i)
 }
 
@@ -1004,7 +992,7 @@ init_elev <- 22.6
 avg_accretion_rates_cohort <- (run_store_cohort[,80] - init_elev) / 80
 
 # Calculate average carbon accumulation rates
-avg_C_accum_rate_cohort <- (carbon_store_cohort[,80] - carbon_store_cohort[,1]) / 80
+avg_C_accum_rate_cohort <- rowMeans(carbon_store_cohort[,2:80])
 
 # Create a data frame to hold all of that information
 tibble(location = c("corn", "sellman", "corn", "sellman"),
@@ -1117,15 +1105,11 @@ for (i in 1:n_runs){
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = for_MEM_agb_only$`root:shoot ratio`[1],
                           rootTurnover=0.55, rootDepthMax=for_MEM_agb_only$`maximum rooting depth (cm)`[1], omDecayRate=0.8,
-                          recalcitrantFrac=0.2, captureRate = 2.8)
+                          recalcitrantFrac=0.2, captureRate = 2.8,
+                          omToOcParams = list(B0 = 0, B1 = 0.44))
   run_store_agb_only[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
-  mem_out$cohorts %>% 
-    mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
-           perc_C = 0.4*loi + 0.0025*loi^2,
-           layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
-    group_by(year) %>% 
-    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store_agb_only[i,]
+  mem_out$annualTimeSteps$cFlux -> carbon_store_agb_only[i,]
   print(i)
 }
 
@@ -1134,7 +1118,7 @@ init_elev <- 22.6
 avg_accretion_rates_agb_only <- (run_store_agb_only[,80] - init_elev) / 80
 
 # Calculate average carbon accumulation rates at each iteration
-avg_C_accum_rate_agb_only <- (carbon_store_agb_only[,80] - carbon_store_agb_only[,1]) / 80
+avg_C_accum_rate_agb_only <- rowMeans(carbon_store_agb_only[,2:80])
 
 # Allow just agb to vary - vary due to cohort 
 run_store_cohort_agb_only <- matrix(NA, nrow = 4, ncol = 100)
@@ -1149,15 +1133,12 @@ for (i in 1:4){
                           zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                           plantElevationType="orthometric", rootToShoot = mean(for_MEM$`root:shoot ratio`),
                           rootTurnover=0.55, rootDepthMax=mean(for_MEM$`maximum rooting depth (cm)`), omDecayRate=0.8,
-                          recalcitrantFrac=0.2, captureRate = 2.8)
+                          recalcitrantFrac=0.2, captureRate = 2.8,
+                          omToOcParams = list(B0 = 0, B1 = 0.44))
   run_store_cohort_agb_only[i,] <- mem_out$annualTimeSteps$surfaceElevation
   
-  mem_out$cohorts %>% 
-    mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
-           perc_C = 0.4*loi + 0.0025*loi^2,
-           layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
-    group_by(year) %>% 
-    summarize(total_C = sum(layer_C)) %>% pull(total_C) -> carbon_store_cohort_agb_only[i,]
+  mem_out$annualTimeSteps$cFlux -> carbon_store_cohort_agb_only[i,]
+  
   print(i)
 }
 
@@ -1166,7 +1147,7 @@ init_elev <- 22.6
 avg_accretion_rates_cohort_agb_only <- (run_store_cohort_agb_only[,80] - init_elev) / 80
 
 # Calculate average carbon accumulation rate
-avg_C_accum_rate_cohort_agb_only <- (carbon_store_cohort_agb_only[,80] - carbon_store_cohort_agb_only[,1]) / 80
+avg_C_accum_rate_cohort_agb_only <- rowMeans(carbon_store_cohort_agb_only[,2:80])
 
 # Bring together information into a data frame
 tibble(location = c("corn", "sellman", "corn", "sellman"),
@@ -1225,45 +1206,37 @@ mem_out_slr34 <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, r
                                zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                                plantElevationType="orthometric", rootToShoot = mean(for_MEM$`root:shoot ratio`),
                                rootTurnover=0.55, rootDepthMax=mean(for_MEM$`maximum rooting depth (cm)`), omDecayRate=0.8,
-                               recalcitrantFrac=0.2, captureRate = 2.8)
+                               recalcitrantFrac=0.2, captureRate = 2.8,
+                               omToOcParams = list(B0 = 0, B1 = 0.44))
 
 # Calculate amount C across simulation
-mem_out_slr34$cohorts %>% 
-  mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
-         perc_C = 0.4*loi + 0.0025*loi^2,
-         layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
-  group_by(year) %>% 
-  summarize(total_C = sum(layer_C)) %>% pull(total_C) -> C_34
+mem_out_slr34$annualTimeSteps$cFlux -> C_34
 
-# Repeat for at SLR = 43.5
-mem_out_slr43 <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=43.5,
+# Repeat for at SLR = 40
+mem_out_slr40 <- rCMEM::runCohortMem(startYear=2020, relSeaLevelRiseInit=0.34, relSeaLevelRiseTotal=40,
                                      initElv=22.6, meanSeaLevel=msl*100,
                                      meanHighWaterDatum=mhw*100, suspendedSediment=3e-05,
                                      lunarNodalAmp=0, bMax = mean(for_MEM$`aboveground biomass (g)`), 
                                      zVegMin=zMin_for_sim*100, zVegMax=zMax_for_sim*100, zVegPeak=NA,
                                      plantElevationType="orthometric", rootToShoot = mean(for_MEM$`root:shoot ratio`),
                                      rootTurnover=0.55, rootDepthMax=mean(for_MEM$`maximum rooting depth (cm)`), omDecayRate=0.8,
-                                     recalcitrantFrac=0.2, captureRate = 2.8)
+                                     recalcitrantFrac=0.2, captureRate = 2.8,
+                                     omToOcParams = list(B0 = 0, B1 = 0.44))
 
 # Calculate amount C across simulation
-mem_out_slr43$cohorts %>% 
-  mutate(loi = (fast_OM + slow_OM + root_mass) / (fast_OM + slow_OM + root_mass + mineral),
-         perc_C = 0.4*loi + 0.0025*loi^2,
-         layer_C = (fast_OM + slow_OM + root_mass)*perc_C) %>% 
-  group_by(year) %>% 
-  summarize(total_C = sum(layer_C)) %>% pull(total_C) -> C_43
+mem_out_slr40$annualTimeSteps$cFlux -> C_40
 
 # Calculate average C accumulation rates for both
-(C_34[80] - C_34[1])/80 -> C_accum_34
-(C_43[80] - C_43[1])/80 -> C_accum_43
+mean(C_34[2:80]) -> C_accum_34
+mean(C_40[2:80]) -> C_accum_40
 
 # Calculate percent increase with decreasing amounts of SLR
-C_accum_34/C_accum_43 # 1.320525 -- this is pretty close to the 32.9% increase due to evolution
+C_accum_34/C_accum_40 # 1.188278 -- this is pretty close to the 18% increase due to evolution
 
 # Get the differences in mean sea level at year 80 in the simulation (2100)
 msl_slr34 <- mem_out_slr34$annualTimeSteps$meanSeaLevel[80]
-msl_slr43 <- mem_out_slr43$annualTimeSteps$meanSeaLevel[80]
+msl_slr40 <- mem_out_slr43$annualTimeSteps$meanSeaLevel[80]
 
-msl_slr43 - msl_slr34 # 6.064646
+msl_slr40 - msl_slr34 # 3.830303
 # The percent change we see due to evolution is the same as a change in SLR by
-# 6cm
+# ~4cm
