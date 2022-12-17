@@ -382,9 +382,9 @@ make_fig1_panel <- function(data, coda_object, trait, label_y, legend, xlab){
 fig1_bgb <- make_fig1_panel(mono_traits, bgb_out, "belowground biomass (g)", 8.5, "top", "")
 fig1_agb <- make_fig1_panel(mono_traits, agb_out, "aboveground biomass (g)", 9, "none", "")
 fig1_density <- make_fig1_panel(mono_traits, density_out, "stem density", 55, "none", "")
-fig1_width <- make_fig1_panel(mono_traits, width_out, "mean stem width (mm)", 3.4, "none", "")
+fig1_width <- make_fig1_panel(mono_traits, width_out, "mean stem width (mm)", 3.4, "none", "genotype")
 fig1_height <- make_fig1_panel(mono_traits, height_out, "mean stem height (cm)", 47.5, "none", "")
-fig1_rs <- make_fig1_panel(mono_traits, rs_out, "root:shoot ratio", 1.0, "none", "genotype")
+fig1_rs <- make_fig1_panel(mono_traits, rs_out, "root:shoot ratio", 1.0, "none", "")
 fig1_beta <- make_fig1_panel(mono_traits, beta_out, trait = "root distribution parameter", 0.93, "none", "genotype")
 
 # Pull out legend

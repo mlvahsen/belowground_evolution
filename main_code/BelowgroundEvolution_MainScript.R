@@ -629,16 +629,16 @@ diffs_by_age_beta <-
 beta_mod <- lm(`root distribution parameter` ~ age, data = diffs_by_age_beta)
 anova(beta_mod)
 # Get estimate of mean difference between groups
-round(coef(beta_mod),3)
+round(coef(beta_mod),2)
 # Get confidence intervals around that difference
-round(confint(beta_mod),3)
+round(confint(beta_mod),2)
 
 rs_mod <- lm(`root:shoot ratio` ~ age, data = diffs_by_age)
 anova(rs_mod)
 # Get estimate of mean difference between groups
-coef(rs_mod)
+round(coef(rs_mod),2)
 # Get confidence interval around that difference
-confint(rs_mod)
+round(confint(rs_mod),2)
 
 height_mod <- lm(`mean stem height (cm)` ~ age, data = diffs_by_age)
 anova(height_mod) 
